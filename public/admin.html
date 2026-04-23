@@ -1,0 +1,1066 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Админка · ЛитКвиз</title>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700;900&family=Golos+Text:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="/socket.io/socket.io.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #07070f; --surface: #0f0f1a; --card: #13131f;
+  --border: #1e1e35; --border2: #2a2a4a;
+  --accent: #e8c547; --accent2: #7c3aed; --accent3: #06b6d4;
+  --red: #ef4444; --green: #22c55e; --text: #f0f0ff; --muted: #555575; --r: 12px;
+}
+body { font-family: 'Golos Text', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+#authGate {
+  min-height: 100vh; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 16px;
+}
+#authGate input {
+  background: var(--card); border: 2px solid var(--border2); border-radius: var(--r);
+  padding: 14px 18px; font-family: 'Golos Text', sans-serif; font-size: 1rem;
+  color: var(--text); outline: none; width: 280px;
+}
+#authGate input:focus { border-color: var(--accent); }
+#mainApp { display: none; grid-template-columns: 280px 1fr; grid-template-rows: 60px 1fr; min-height: 100vh; }
+#mainApp.visible { display: grid; }
+header {
+  grid-column: 1 / -1; background: var(--surface); border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; padding: 0 24px; gap: 16px;
+}
+.logo { font-family: 'Unbounded', sans-serif; font-size: 1rem; font-weight: 900; }
+.logo span { color: var(--accent); }
+.badge { font-size: .65rem; background: var(--accent2); color: #fff; padding: 3px 10px; border-radius: 99px; letter-spacing: .1em; text-transform: uppercase; font-weight: 600; }
+.header-status { margin-left: auto; display: flex; align-items: center; gap: 8px; font-size: .8rem; color: var(--muted); }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); animation: pulse 1.5s infinite; }
+.dot.red { background: var(--red); animation: none; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+aside {
+  background: var(--surface); border-right: 1px solid var(--border);
+  padding: 20px 16px; display: flex; flex-direction: column; gap: 8px; overflow-y: auto;
+}
+.sidebar-label { font-size: .65rem; text-transform: uppercase; letter-spacing: .15em; color: var(--muted); padding: 0 8px; margin-top: 8px; margin-bottom: 4px; }
+main { padding: 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; }
+
+/* Tabs */
+.tab-bar { display: flex; gap: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 4px; }
+.tab-btn {
+  flex: 1; padding: 9px 12px; border: none; border-radius: 9px;
+  font-family: 'Unbounded', sans-serif; font-size: .65rem; font-weight: 700;
+  cursor: pointer; transition: background .2s, color .2s;
+  background: transparent; color: var(--muted); letter-spacing: .05em; white-space: nowrap;
+}
+.tab-btn.active { background: var(--accent2); color: #fff; }
+.tab-panel { display: none; flex-direction: column; gap: 20px; }
+.tab-panel.active { display: flex; }
+
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; }
+.card-title { font-family: 'Unbounded', sans-serif; font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin-bottom: 16px; }
+.stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 16px; text-align: center; }
+.stat-val { font-family: 'Unbounded', sans-serif; font-size: 2rem; font-weight: 900; line-height: 1; color: var(--accent); }
+.stat-label { font-size: .7rem; color: var(--muted); text-transform: uppercase; letter-spacing: .1em; margin-top: 6px; }
+.btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 12px 22px; border-radius: var(--r); border: none;
+  font-family: 'Unbounded', sans-serif; font-size: .78rem; font-weight: 700;
+  letter-spacing: .05em; cursor: pointer; transition: opacity .15s, transform .12s;
+}
+.btn:active { transform: scale(.97); }
+.btn-primary { background: var(--accent); color: #07070f; }
+.btn-danger  { background: var(--red); color: #fff; }
+.btn-ghost   { background: transparent; border: 1px solid var(--border2); color: var(--text); }
+.btn-green   { background: var(--green); color: #07070f; }
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+.player-chip { display: inline-flex; align-items: center; gap: 8px; background: var(--surface); border: 1px solid var(--border2); border-radius: 99px; padding: 6px 14px 6px 10px; font-size: .85rem; margin: 4px; }
+.player-chip button { background: none; border: none; color: var(--muted); cursor: pointer; font-size: .8rem; padding: 0; transition: color .15s; }
+.player-chip button:hover { color: var(--red); }
+.control-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+.lb-row { display: flex; align-items: center; gap: 14px; padding: 10px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); margin-bottom: 6px; }
+.lb-rank { font-family: 'Unbounded', sans-serif; font-weight: 900; font-size: .9rem; color: var(--muted); width: 22px; flex-shrink: 0; }
+.lb-name { flex: 1; font-weight: 500; }
+.lb-score { font-family: 'Unbounded', sans-serif; font-size: .8rem; font-weight: 700; color: var(--accent); }
+#toast { position: fixed; bottom: 24px; right: 24px; background: var(--card); border: 1px solid var(--border2); border-radius: var(--r); padding: 14px 20px; font-size: .9rem; max-width: 320px; transform: translateY(80px); opacity: 0; transition: all .3s; z-index: 999; }
+#toast.show { transform: translateY(0); opacity: 1; }
+#toast.ok  { border-color: var(--green); }
+#toast.err { border-color: var(--red); }
+#gameStatusBar { background: linear-gradient(90deg, rgba(124,58,237,.15), rgba(6,182,212,.1)); border: 1px solid var(--border2); border-radius: var(--r); padding: 14px 20px; display: flex; align-items: center; gap: 12px; font-size: .9rem; }
+.status-indicator { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
+.status-indicator.lobby    { background: var(--accent3); animation: pulse 1.5s infinite; }
+.status-indicator.question { background: var(--green); animation: pulse .8s infinite; }
+.status-indicator.finished { background: var(--accent); animation: none; }
+.answered-bar-wrap { margin-bottom: 12px; }
+.answered-bar-label { display: flex; justify-content: space-between; font-size: .75rem; color: var(--muted); margin-bottom: 6px; }
+.answered-bar-outer { height: 6px; background: var(--border); border-radius: 99px; overflow: hidden; }
+.answered-bar-inner { height: 100%; background: linear-gradient(90deg, var(--accent2), var(--accent3)); border-radius: 99px; transition: width .4s; }
+.answer-log-wrap { display: flex; flex-direction: column; gap: 5px; }
+.answer-row { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: var(--surface); border-radius: var(--r); border: 1px solid var(--border); font-size: .85rem; }
+.answer-row .ar-name { flex: 1; font-weight: 500; }
+.answer-row .ar-time { font-family: 'Unbounded', sans-serif; font-size: .7rem; color: var(--muted); }
+.answer-row .ar-pts  { font-family: 'Unbounded', sans-serif; font-size: .75rem; font-weight: 700; }
+.answer-row.correct { border-color: rgba(34,197,94,.4); }
+.answer-row.wrong   { border-color: rgba(239,68,68,.3); }
+.answer-row.correct .ar-pts { color: var(--green); }
+.answer-row.wrong   .ar-pts { color: var(--red); }
+.answer-row.pending .ar-pts { color: var(--muted); font-size:.65rem; }
+.user-table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+.user-table th { text-align: left; font-family: 'Unbounded', sans-serif; font-size: .65rem; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); padding: 8px 10px; border-bottom: 1px solid var(--border); }
+.user-table td { padding: 10px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.user-table tr:last-child td { border-bottom: none; }
+.user-table tr:hover td { background: rgba(255,255,255,.02); }
+.user-score-val { font-family: 'Unbounded', sans-serif; font-size: .78rem; font-weight: 700; color: var(--accent); }
+.u-actions { display: flex; gap: 6px; }
+.btn-tiny { padding: 5px 10px; font-size: .65rem; border-radius: 8px; border: none; font-family: 'Unbounded', sans-serif; font-weight: 700; cursor: pointer; }
+.btn-tiny.reset  { background: rgba(6,182,212,.15); color: var(--accent3); }
+.btn-tiny.del    { background: rgba(239,68,68,.15);  color: var(--red); }
+.btn-tiny.create { background: rgba(34,197,94,.15);  color: var(--green); }
+.drop-zone { border: 2px dashed var(--border2); border-radius: 16px; padding: 32px; text-align: center; cursor: pointer; transition: border-color .2s, background .2s; }
+.drop-zone:hover, .drop-zone.drag { border-color: var(--accent); background: rgba(232,197,71,.04); }
+.drop-icon { font-size: 2.5rem; margin-bottom: 12px; }
+.drop-text { color: var(--muted); font-size: .9rem; }
+.drop-text strong { color: var(--text); }
+#fileInput { display: none; }
+.author-row { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); margin-bottom: 8px; }
+.author-icon { width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, var(--accent2), var(--accent3)); display: flex; align-items: center; justify-content: center; font-size: 1rem; flex-shrink: 0; }
+.author-badge { margin-left: auto; font-size: .7rem; color: var(--accent3); background: rgba(6,182,212,.1); border: 1px solid rgba(6,182,212,.3); border-radius: 99px; padding: 3px 10px; white-space: nowrap; }
+
+/* ── Config styles ── */
+.config-section { margin-bottom: 20px; }
+.config-section-title { font-family: 'Unbounded', sans-serif; font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin-bottom: 12px; }
+.config-row { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; flex-wrap: wrap; }
+.config-label { font-size: .85rem; font-weight: 500; min-width: 160px; }
+.config-val-display { font-family: 'Unbounded', sans-serif; font-size: 1.1rem; font-weight: 900; color: var(--accent); min-width: 40px; text-align: center; }
+input[type=range] {
+  flex: 1; min-width: 120px; max-width: 240px;
+  accent-color: var(--accent); height: 4px; cursor: pointer;
+}
+input[type=number] {
+  background: var(--surface); border: 2px solid var(--border2); border-radius: var(--r);
+  padding: 8px 12px; font-family: 'Unbounded', sans-serif; font-size: .9rem; font-weight: 700;
+  color: var(--accent); outline: none; width: 80px; text-align: center;
+}
+input[type=number]:focus { border-color: var(--accent); }
+.works-grid { display: flex; flex-direction: column; gap: 10px; }
+.work-item {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r); overflow: hidden;
+}
+.work-item.selected { border-color: var(--accent2); }
+.work-header {
+  display: flex; align-items: center; gap: 12px; padding: 12px 16px; cursor: pointer;
+  transition: background .15s;
+}
+.work-header:hover { background: rgba(255,255,255,.03); }
+.work-checkbox { width: 18px; height: 18px; accent-color: var(--accent2); cursor: pointer; flex-shrink: 0; }
+.work-info { flex: 1; }
+.work-title { font-weight: 600; font-size: .88rem; }
+.work-sub { font-size: .72rem; color: var(--muted); margin-top: 2px; }
+.work-expand { font-size: .75rem; color: var(--muted); transition: transform .2s; }
+.work-expand.open { transform: rotate(180deg); }
+.work-detail { display: none; border-top: 1px solid var(--border); padding: 14px 16px; }
+.work-detail.open { display: block; }
+.work-detail-title { font-size: .72rem; color: var(--muted); text-transform: uppercase; letter-spacing: .1em; margin-bottom: 10px; }
+.questions-grid { display: flex; flex-direction: column; gap: 6px; max-height: 300px; overflow-y: auto; }
+.q-item { display: flex; align-items: flex-start; gap: 8px; padding: 7px 10px; background: var(--card); border-radius: 8px; border: 1px solid var(--border); font-size: .8rem; cursor: pointer; transition: border-color .15s; }
+.q-item:hover { border-color: var(--border2); }
+.q-item.q-selected { border-color: var(--accent2); background: rgba(124,58,237,.08); }
+.q-item input[type=checkbox] { margin-top: 2px; flex-shrink: 0; accent-color: var(--accent2); }
+.q-num { font-family: 'Unbounded', sans-serif; font-size: .65rem; font-weight: 700; color: var(--muted); min-width: 24px; flex-shrink: 0; margin-top: 1px; }
+.q-text-preview { flex: 1; line-height: 1.35; color: var(--text); }
+.work-q-actions { display: flex; gap: 8px; margin-bottom: 10px; }
+.btn-xs { padding: 4px 10px; font-size: .65rem; border-radius: 8px; border: 1px solid var(--border2); background: transparent; color: var(--muted); cursor: pointer; font-family: 'Unbounded', sans-serif; font-weight: 700; }
+.btn-xs:hover { color: var(--text); border-color: var(--text); }
+.q-mode-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; font-size: .8rem; color: var(--muted); }
+.q-mode-row label { cursor: pointer; }
+.q-mode-row input[type=radio] { accent-color: var(--accent2); }
+.rand-count-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; font-size: .82rem; }
+.rand-count-row input[type=number] { width: 64px; padding: 5px 8px; font-size: .8rem; }
+
+/* Games history table */
+.games-table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+.games-table th { text-align: left; font-family: 'Unbounded', sans-serif; font-size: .62rem; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); padding: 8px 10px; border-bottom: 1px solid var(--border); }
+.games-table td { padding: 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.games-table tr:last-child td { border-bottom: none; }
+.games-table tr { cursor: pointer; }
+.games-table tr:hover td { background: rgba(255,255,255,.02); }
+.game-score-val { font-family: 'Unbounded', sans-serif; font-size: .78rem; font-weight: 700; color: var(--accent); }
+
+/* Modal */
+.modal-overlay { position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,.75); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; padding: 20px; opacity: 0; pointer-events: none; transition: opacity .25s; }
+.modal-overlay.open { opacity: 1; pointer-events: all; }
+.modal { background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 24px; width: 100%; max-width: 520px; max-height: 80vh; overflow-y: auto; }
+.modal-title { font-family: 'Unbounded', sans-serif; font-size: .85rem; font-weight: 700; margin-bottom: 16px; }
+.result-player-row { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: var(--surface); border-radius: var(--r); border: 1px solid var(--border); margin-bottom: 6px; font-size: .83rem; }
+.rp-rank { font-family: 'Unbounded', sans-serif; font-weight: 900; font-size: .85rem; width: 22px; color: var(--muted); }
+.rp-name { flex: 1; font-weight: 600; }
+.rp-score { font-family: 'Unbounded', sans-serif; font-size: .78rem; font-weight: 700; color: var(--accent); }
+
+@media (max-width: 768px) {
+  #mainApp { grid-template-columns: 1fr; grid-template-rows: 60px auto 1fr; }
+  aside { grid-row: 2; padding: 12px; }
+}
+</style>
+</head>
+<body>
+
+<div id="authGate">
+  <div class="logo">ЛИТ<span>КВИЗ</span></div>
+  <h2 style="font-family:'Unbounded',sans-serif;font-size:1.1rem;font-weight:700;color:var(--muted);">Введи пароль</h2>
+  <input type="password" id="pwInput" placeholder="Пароль администратора">
+  <button class="btn btn-primary" onclick="authAdmin()">Войти</button>
+  <div style="font-size:.8rem;color:var(--muted);">По умолчанию: admin123</div>
+  <div id="authErr" style="color:#ef4444;font-size:.85rem;"></div>
+</div>
+
+<div id="mainApp">
+  <header>
+    <div class="logo">ЛИТ<span>КВИЗ</span></div>
+    <span class="badge">Админ</span>
+    <div class="header-status">
+      <div class="dot" id="connDot"></div>
+      <span id="connLabel">Подключение...</span>
+    </div>
+  </header>
+
+  <aside>
+    <div class="sidebar-label">Статус</div>
+    <div id="gameStatusBar">
+      <div class="status-indicator" id="statusInd"></div>
+      <span id="statusLabel">Лобби</span>
+    </div>
+    <div class="sidebar-label" style="margin-top:16px;">Таймер</div>
+    <div style="font-family:'Unbounded',sans-serif;font-size:2.5rem;font-weight:900;color:var(--accent);text-align:center;padding:8px 0;" id="sideTimer">—</div>
+    <div class="sidebar-label">Вопрос</div>
+    <div style="font-size:1.1rem;font-family:'Unbounded',sans-serif;font-weight:700;color:var(--text);text-align:center;" id="sideQNum">— / —</div>
+    <div style="flex:1"></div>
+    <button class="btn btn-ghost" style="width:100%;justify-content:center;margin-top:8px;" onclick="skipQuestion()">⏭ Пропустить</button>
+    <button class="btn btn-danger" style="width:100%;justify-content:center;margin-top:8px;" onclick="resetGame()">🔄 Сброс</button>
+  </aside>
+
+  <main>
+    <!-- Tab bar -->
+    <div class="tab-bar">
+      <button class="tab-btn active" onclick="switchTab('game')">🎮 Игра</button>
+      <button class="tab-btn" onclick="switchTab('config')">⚙️ Настройка</button>
+      <button class="tab-btn" onclick="switchTab('users')">👥 Игроки</button>
+      <button class="tab-btn" onclick="switchTab('history')">📋 История</button>
+      <button class="tab-btn" onclick="switchTab('files')">📂 Файлы</button>
+    </div>
+
+    <!-- TAB: GAME -->
+    <div class="tab-panel active" id="tab-game">
+      <div class="card">
+        <div class="card-title">Управление игрой</div>
+        <div class="stats-row" style="margin-bottom:20px;">
+          <div class="stat"><div class="stat-val" id="statPlayers">0</div><div class="stat-label">Игроков</div></div>
+          <div class="stat"><div class="stat-val" id="statQ">0</div><div class="stat-label">Вопросов</div></div>
+          <div class="stat"><div class="stat-val" id="statAuthors">0</div><div class="stat-label">Произведений</div></div>
+        </div>
+        <div class="control-row">
+          <button class="btn btn-primary" id="startBtn" onclick="startGame()">▶ Начать игру</button>
+          <button class="btn btn-danger" id="stopNowBtn" onclick="stopGameNow()">⏹ Остановить сейчас</button>
+          <input type="number" id="stopAfterInput" min="1" placeholder="24"
+            style="background:var(--surface);border:2px solid var(--border2);border-radius:var(--r);padding:10px 12px;font-family:'Unbounded',sans-serif;font-size:.82rem;font-weight:700;color:var(--accent);outline:none;width:88px;text-align:center;">
+          <button class="btn btn-ghost" id="stopAfterBtn" onclick="scheduleStop()">Остановить на вопросе</button>
+        </div>
+        <div style="font-size:.8rem;color:var(--muted);margin-top:10px;" id="stopHint">Можно завершить игру сразу или после выбранного вопроса.</div>
+        <div style="font-size:.8rem;color:var(--red);margin-top:12px;" id="gameErr"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Игроки в лобби</div>
+        <div id="playerChips" style="min-height:32px;"><span style="color:var(--muted);font-size:.9rem;">Никого нет...</span></div>
+      </div>
+
+      <div class="card" id="answerLogCard" style="display:none;">
+        <div class="card-title">Ответы — текущий вопрос</div>
+        <div class="answered-bar-wrap">
+          <div class="answered-bar-label">
+            <span id="answeredCountLabel">Ответили: 0 / 0</span>
+            <span id="answeredPctLabel">0%</span>
+          </div>
+          <div class="answered-bar-outer"><div class="answered-bar-inner" id="answeredBar" style="width:0%"></div></div>
+        </div>
+        <div class="answer-log-wrap" id="answerLogList"></div>
+      </div>
+
+      <div class="card" id="lbCard" style="display:none;">
+        <div class="card-title">Таблица лидеров (live)</div>
+        <div id="lbList"></div>
+      </div>
+    </div>
+
+    <!-- TAB: CONFIG -->
+    <div class="tab-panel" id="tab-config">
+      <div class="card">
+        <div class="card-title">Параметры квиза</div>
+
+        <div class="config-section">
+          <div class="config-section-title">Общие</div>
+
+          <div class="config-row">
+            <span class="config-label">Количество вопросов</span>
+            <input type="number" id="cfgCount" min="1" max="200" value="15">
+            <span style="font-size:.78rem;color:var(--muted);">вопросов всего</span>
+          </div>
+
+          <div class="config-row">
+            <span class="config-label">Время на вопрос</span>
+            <input type="range" id="cfgTimeRange" min="5" max="120" value="30" oninput="document.getElementById('cfgTimeVal').textContent=this.value">
+            <span class="config-val-display" id="cfgTimeVal">30</span>
+            <span style="font-size:.78rem;color:var(--muted);">сек</span>
+          </div>
+
+          <div class="config-row">
+            <span class="config-label">Набор вопросов</span>
+            <select id="cfgSource" onchange="changeQuestionSource(this.value)"
+              style="background:var(--surface);border:2px solid var(--border2);border-radius:var(--r);padding:8px 12px;font-family:'Golos Text',sans-serif;font-size:.9rem;color:var(--text);outline:none;">
+              <option value="main">Основные</option>
+              <option value="reserve">Резерв</option>
+              <option value="all">Все вместе</option>
+            </select>
+            <span style="font-size:.78rem;color:var(--muted);">переключает папку с вопросами</span>
+          </div>
+        </div>
+
+        <div class="config-section">
+          <div class="config-section-title">Выбор произведений</div>
+          <div style="font-size:.8rem;color:var(--muted);margin-bottom:12px;">
+            Выбери произведения для квиза. Для каждого можно указать конкретные вопросы или оставить случайный выбор.
+          </div>
+          <div class="works-grid" id="worksGrid">
+            <div style="color:var(--muted);font-size:.85rem;">Загрузка...</div>
+          </div>
+        </div>
+
+        <div class="control-row" style="margin-top:8px;">
+          <button class="btn btn-primary" onclick="saveConfig()">💾 Сохранить настройки</button>
+          <button class="btn btn-ghost" onclick="loadConfig()">↺ Сбросить</button>
+        </div>
+        <div style="font-size:.8rem;color:var(--red);margin-top:8px;" id="cfgErr"></div>
+        <div style="font-size:.8rem;color:var(--green);margin-top:8px;" id="cfgOk"></div>
+      </div>
+    </div>
+
+    <!-- TAB: USERS -->
+    <div class="tab-panel" id="tab-users">
+      <div class="card">
+        <div class="card-title">Создать игрока</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+          <div>
+            <div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px;">Имя</div>
+            <input type="text" id="newUserName" placeholder="Имя игрока" maxlength="24"
+              style="background:var(--surface);border:2px solid var(--border2);border-radius:var(--r);padding:10px 14px;font-family:'Golos Text',sans-serif;font-size:.9rem;color:var(--text);outline:none;width:180px;">
+          </div>
+          <div>
+            <div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px;">Пароль</div>
+            <input type="text" id="newUserPass" placeholder="Пароль (мин. 4)"
+              style="background:var(--surface);border:2px solid var(--border2);border-radius:var(--r);padding:10px 14px;font-family:'Golos Text',sans-serif;font-size:.9rem;color:var(--text);outline:none;width:180px;">
+          </div>
+          <button class="btn btn-green" onclick="createUser()">+ Создать</button>
+        </div>
+        <div style="font-size:.82rem;color:var(--red);margin-top:8px;" id="createUserErr"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Зарегистрированные игроки</div>
+        <div id="usersWrap" style="overflow-x:auto;">
+          <table class="user-table">
+            <thead>
+              <tr><th>#</th><th>Имя</th><th>Игр</th><th>Верных</th><th>Рекорд</th><th>Σ очки</th><th></th></tr>
+            </thead>
+            <tbody id="usersBody"><tr><td colspan="7" style="color:var(--muted);padding:16px;">Загрузка...</td></tr></tbody>
+          </table>
+        </div>
+        <div class="control-row" style="margin-top:14px;">
+          <button class="btn btn-ghost" onclick="loadUsers()">↻ Обновить</button>
+          <button class="btn btn-danger" onclick="deleteAllUsers()">🗑 Удалить всех игроков</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: HISTORY -->
+    <div class="tab-panel" id="tab-history">
+      <div class="card">
+        <div class="card-title">История игр</div>
+        <div style="overflow-x:auto;">
+          <table class="games-table">
+            <thead>
+              <tr><th>#</th><th>Дата</th><th>Вопросов</th><th>Игроков</th><th>Топ очков</th><th>Статус</th></tr>
+            </thead>
+            <tbody id="gamesBody"><tr><td colspan="6" style="color:var(--muted);padding:16px;">Загрузка...</td></tr></tbody>
+          </table>
+        </div>
+        <button class="btn btn-ghost" style="margin-top:14px;" onclick="loadGames()">↻ Обновить</button>
+      </div>
+    </div>
+
+    <!-- TAB: FILES -->
+    <div class="tab-panel" id="tab-files">
+      <div class="card">
+        <div class="card-title">Загрузить вопросы (JSON)</div>
+        <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+          <div class="drop-icon">📂</div>
+          <div class="drop-text"><strong>Кликни или перетащи</strong> JSON-файл</div>
+          <div class="drop-text" style="margin-top:6px;font-size:.8rem;">pushkin.json, esenin.json и т.д.</div>
+        </div>
+        <input type="file" id="fileInput" accept=".json" onchange="handleFileSelect(event)">
+        <div style="font-size:.8rem;margin-top:12px;color:var(--muted);">
+          Структура:
+          <pre style="margin-top:8px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:.72rem;overflow-x:auto;color:var(--accent3);">{"author":"Пушкин","work":"Евгений Онегин","questions":[{"q":"Вопрос?","options":["А","Б","В","Г"],"answer":0}]}</pre>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Загруженные произведения</div>
+        <div id="authorList"><div style="color:var(--muted);font-size:.9rem;">Загрузка...</div></div>
+        <button class="btn btn-ghost" style="margin-top:14px;" onclick="loadAuthors()">↻ Обновить</button>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div id="toast"></div>
+
+<!-- Game detail modal -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+  <div class="modal">
+    <div class="modal-title" id="modalTitle">Итоги игры</div>
+    <div id="modalBody"></div>
+    <button class="btn btn-ghost" style="margin-top:12px;width:100%;justify-content:center;" onclick="closeModalDirect()">Закрыть</button>
+  </div>
+</div>
+
+<script>
+const socket = io({ reconnection: true, reconnectionDelay: 1000 });
+let adminPwd   = '';
+let gameStatus = 'lobby';
+let currentQ   = -1;
+let totalPlayers = 0;
+let scheduledStopAfter = null;
+let currentQuestionSource = 'main';
+// Works data loaded from server: [{ id, author, work, count, questions }]
+let worksData = [];
+// worksConfig: { [fileId]: { selected, mode, questionIds, randomCount } }
+let worksConfig = {};
+
+// ── Auth ────────────────────────────────────────────────────────
+function authAdmin() {
+  const pw = document.getElementById('pwInput').value;
+  if (!pw) return;
+  adminPwd = pw;
+  document.getElementById('authGate').style.display = 'none';
+  document.getElementById('mainApp').classList.add('visible');
+  loadAuthors();
+  loadUsers();
+  loadConfig();
+  loadGames();
+}
+document.getElementById('pwInput').addEventListener('keydown', e => { if (e.key === 'Enter') authAdmin(); });
+
+// ── Toast ────────────────────────────────────────────────────────
+function toast(msg, type = 'ok') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'show ' + type;
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.className = '', 3000);
+}
+
+// ── Tabs ─────────────────────────────────────────────────────────
+function switchTab(name) {
+  document.querySelectorAll('.tab-btn').forEach((b, i) => {
+    b.classList.toggle('active', b.textContent.toLowerCase().includes(
+      name === 'game' ? '🎮' : name === 'config' ? '⚙' : name === 'users' ? '👥' : name === 'history' ? '📋' : '📂'
+    ));
+  });
+  // Simpler approach: match by onclick attr
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    b.classList.toggle('active', b.getAttribute('onclick').includes("'" + name + "'"));
+  });
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+}
+
+// ── Socket ────────────────────────────────────────────────────────
+socket.on('connect', () => {
+  document.getElementById('connDot').classList.remove('red');
+  document.getElementById('connLabel').textContent = 'Подключено';
+});
+socket.on('disconnect', () => {
+  document.getElementById('connDot').classList.add('red');
+  document.getElementById('connLabel').textContent = 'Нет связи';
+});
+socket.on('stateSync', ({ status, playerCount, players, questionIndex, total, stopAfterQuestion }) => {
+  gameStatus = status; currentQ = questionIndex; totalPlayers = playerCount;
+  scheduledStopAfter = stopAfterQuestion || null;
+  updateStatusUI(status);
+  document.getElementById('statPlayers').textContent = playerCount;
+  document.getElementById('sideQNum').textContent = questionIndex >= 0 ? `${questionIndex+1} / ${total}` : '— / —';
+  updateStopHint();
+  if (players && players.length) {
+    renderPlayerChips(players);
+  }
+});
+socket.on('playerList', ({ players, count, status }) => {
+  if (status) gameStatus = status;
+  totalPlayers = count;
+  document.getElementById('statPlayers').textContent = count;
+  updateStatusUI(gameStatus);
+  renderPlayerChips(players);
+});
+socket.on('question', ({ questionIndex, total }) => {
+  currentQ = questionIndex;
+  document.getElementById('sideQNum').textContent = `${questionIndex+1} / ${total}`;
+  updateStatusUI('question');
+  document.getElementById('lbCard').style.display = 'block';
+  document.getElementById('answerLogCard').style.display = 'block';
+  document.getElementById('answerLogList').innerHTML = '';
+  updateAnsweredBar(0, totalPlayers);
+});
+socket.on('timer', ({ timeLeft }) => {
+  document.getElementById('sideTimer').textContent = timeLeft;
+  document.getElementById('sideTimer').style.color = timeLeft <= 10 ? '#ef4444' : 'var(--accent)';
+});
+socket.on('answerUpdate', ({ questionIndex, answerLog, totalPlayers: tp }) => {
+  if (questionIndex !== currentQ) return;
+  totalPlayers = tp;
+  renderAnswerLog(answerLog, tp, false);
+});
+socket.on('reveal', ({ leaderboard, answerLog }) => {
+  updateLeaderboard(leaderboard);
+  if (answerLog) renderAnswerLog(answerLog, totalPlayers, true);
+  document.getElementById('sideTimer').textContent = '—';
+  updateStatusUI('between');
+});
+socket.on('gameEnd', ({ leaderboard }) => {
+  updateLeaderboard(leaderboard);
+  updateStatusUI('finished');
+  scheduledStopAfter = null;
+  updateStopHint();
+  toast('🏆 Игра завершена!', 'ok');
+  setTimeout(() => { loadUsers(); loadGames(); }, 1000);
+});
+socket.on('countdown', () => updateStatusUI('countdown'));
+socket.on('gameReset', () => {
+  updateStatusUI('lobby');
+  scheduledStopAfter = null;
+  document.getElementById('lbCard').style.display = 'none';
+  document.getElementById('answerLogCard').style.display = 'none';
+  document.getElementById('sideTimer').textContent = '—';
+  document.getElementById('sideQNum').textContent = '— / —';
+  renderPlayerChips([]);
+  updateStopHint();
+  toast('Игра сброшена', 'ok');
+});
+socket.on('adminError', msg => {
+  toast(msg, 'err');
+  document.getElementById('gameErr').textContent = msg;
+  setTimeout(() => document.getElementById('gameErr').textContent = '', 4000);
+});
+socket.on('adminStarted', ({ questionCount }) => {
+  document.getElementById('statQ').textContent = questionCount;
+  toast(`Игра запущена! ${questionCount} вопросов`, 'ok');
+});
+socket.on('adminResetDone', () => toast('Сброшено!', 'ok'));
+socket.on('adminStopped', ({ mode, stopAfterQuestion }) => {
+  scheduledStopAfter = null;
+  updateStopHint();
+  toast(mode === 'now' ? 'Игра остановлена' : `Игра остановлена на вопросе ${stopAfterQuestion}`, 'ok');
+});
+socket.on('adminStopScheduled', ({ stopAfterQuestion }) => {
+  scheduledStopAfter = stopAfterQuestion;
+  updateStopHint();
+  toast(`Игра остановится после вопроса ${stopAfterQuestion}`, 'ok');
+});
+
+// ── Status UI ─────────────────────────────────────────────────────
+const STATUS_LABELS = { lobby:'Лобби', countdown:'Обратный отсчёт', question:'Вопрос', between:'Пауза', finished:'Завершено' };
+function updateStatusUI(status) {
+  gameStatus = status;
+  document.getElementById('statusLabel').textContent = STATUS_LABELS[status] || status;
+  document.getElementById('statusInd').className = 'status-indicator ' + status;
+  document.getElementById('startBtn').disabled = !((status === 'lobby' || status === 'finished') && totalPlayers > 0);
+  document.getElementById('stopNowBtn').disabled = status === 'lobby' || status === 'finished';
+  document.getElementById('stopAfterBtn').disabled = status === 'lobby' || status === 'finished';
+  document.getElementById('stopAfterInput').disabled = status === 'lobby' || status === 'finished';
+}
+
+function updateStopHint() {
+  const el = document.getElementById('stopHint');
+  if (gameStatus === 'lobby' || gameStatus === 'finished') {
+    el.textContent = 'Можно завершить игру сразу или после выбранного вопроса.';
+    return;
+  }
+  if (scheduledStopAfter) {
+    el.textContent = `Запланирована остановка после вопроса ${scheduledStopAfter}.`;
+    return;
+  }
+  el.textContent = 'Остановка не запланирована.';
+}
+
+function renderPlayerChips(players) {
+  const c = document.getElementById('playerChips');
+  if (!players || !players.length) {
+    c.innerHTML = '<span style="color:var(--muted);font-size:.9rem;">Никого нет...</span>';
+    return;
+  }
+  c.innerHTML = players.map(name => `
+    <span class="player-chip">
+      <span>👤</span> ${name}
+      <button onclick="kickPlayer('${name}')" title="Удалить">✕</button>
+    </span>
+  `).join('');
+}
+
+function updateLeaderboard(lb) {
+  const medals = ['🥇','🥈','🥉'];
+  document.getElementById('lbList').innerHTML = lb.slice(0,10).map((p,i) => `
+    <div class="lb-row">
+      <div class="lb-rank">${medals[i] || (i+1)}</div>
+      <div class="lb-name">${p.name}</div>
+      <div style="text-align:right">
+        <div class="lb-score">${p.score}</div>
+        <div style="font-size:.67rem;color:var(--muted)">${p.correct}✓ ${p.wrong??0}✗ · ср.${p.avgTime??'—'}с</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function updateAnsweredBar(answered, total) {
+  const pct = total > 0 ? Math.round(answered / total * 100) : 0;
+  document.getElementById('answeredCountLabel').textContent = `Ответили: ${answered} / ${total}`;
+  document.getElementById('answeredPctLabel').textContent   = pct + '%';
+  document.getElementById('answeredBar').style.width        = pct + '%';
+}
+
+function renderAnswerLog(answerLog, tp, pointsReady) {
+  const entries = Object.entries(answerLog).sort((a, b) => a[1].elapsed - b[1].elapsed);
+  updateAnsweredBar(entries.length, tp);
+  document.getElementById('answerLogList').innerHTML = entries.map(([name, d]) => {
+    const ptsText = pointsReady && d.points !== null ? (d.points > 0 ? '+' + d.points : '0') : '...';
+    return `<div class="answer-row ${d.correct ? 'correct' : 'wrong'}${!pointsReady ? ' pending' : ''}">
+      <span>${d.correct ? '✅' : '❌'}</span>
+      <span class="ar-name">${name}</span>
+      <span class="ar-time">${d.elapsed}с</span>
+      <span class="ar-pts">${ptsText}</span>
+    </div>`;
+  }).join('');
+}
+
+// ── Game controls ──────────────────────────────────────────────
+function startGame()    { socket.emit('adminStart', { password: adminPwd }); }
+function resetGame()    { if (!confirm('Сбросить игру? Все игроки будут отключены.')) return; socket.emit('adminReset', { password: adminPwd }); }
+function skipQuestion() { if (gameStatus !== 'question') { toast('Вопрос не идёт', 'err'); return; } socket.emit('adminNextQuestion', { password: adminPwd }); }
+function kickPlayer(n)  { if (!confirm(`Удалить "${n}"?`)) return; socket.emit('adminKick', { name: n, password: adminPwd }); }
+function stopGameNow()  { if (!confirm('Остановить игру прямо сейчас и показать текущие итоги?')) return; socket.emit('adminStopNow', { password: adminPwd }); }
+function scheduleStop() {
+  const stopAfterQuestion = parseInt(document.getElementById('stopAfterInput').value);
+  if (!Number.isInteger(stopAfterQuestion) || stopAfterQuestion < 1) {
+    toast('Укажи номер вопроса, после которого остановить игру', 'err');
+    return;
+  }
+  socket.emit('adminScheduleStop', { password: adminPwd, stopAfterQuestion });
+}
+
+// ── Config ─────────────────────────────────────────────────────
+async function loadConfig() {
+  try {
+    const res  = await fetch('/admin/config?password=' + encodeURIComponent(adminPwd));
+    const data = await res.json();
+    if (!data || data.error) { return; }
+
+    document.getElementById('cfgCount').value     = data.questionCount;
+    document.getElementById('cfgTimeRange').value = data.questionTime;
+    document.getElementById('cfgTimeVal').textContent = data.questionTime;
+    currentQuestionSource = data.questionSource || 'main';
+    document.getElementById('cfgSource').value = currentQuestionSource;
+    worksConfig = data.worksConfig || {};
+    await loadWorksForConfig();
+  } catch (e) { console.error(e); }
+}
+
+async function loadWorksForConfig() {
+  const res  = await fetch('/admin/questions?source=' + encodeURIComponent(currentQuestionSource));
+  worksData  = await res.json();
+  document.getElementById('statAuthors').textContent = worksData.length;
+
+  const grid = document.getElementById('worksGrid');
+  if (!worksData.length) { grid.innerHTML = '<div style="color:var(--muted);">Нет файлов</div>'; return; }
+
+  grid.innerHTML = worksData.map((w, wi) => {
+    const wc      = worksConfig[w.id] || {};
+    const sel     = wc.selected !== false;
+    const mode    = wc.mode || 'random';
+    const randCnt = wc.randomCount || 3;
+    const selIds  = wc.questionIds || [];
+
+    const questionsHTML = (w.questions || []).map((q, qi) => {
+      const checked = selIds.includes(qi) ? 'checked' : '';
+      const cls     = selIds.includes(qi) ? 'q-item q-selected' : 'q-item';
+      return `<label class="${cls}" id="qi_${wi}_${qi}">
+        <input type="checkbox" ${checked} onchange="toggleQuestion(${wi}, ${qi}, this.checked)">
+        <span class="q-num">#${qi+1}</span>
+        <span class="q-text-preview">${q.q}</span>
+      </label>`;
+    }).join('');
+
+    return `<div class="work-item${sel ? ' selected' : ''}" id="work_${wi}">
+      <div class="work-header" onclick="toggleWorkExpand(${wi})">
+        <input type="checkbox" class="work-checkbox" ${sel ? 'checked' : ''}
+          onclick="event.stopPropagation(); toggleWork(${wi}, this.checked)">
+        <div class="work-info">
+          <div class="work-title">${w.author}</div>
+          <div class="work-sub">${w.work || 'Без названия'} · ${w.count} вопросов · ${w.source === 'reserve' ? 'резерв' : 'основные'}</div>
+        </div>
+        <span class="work-expand" id="wexp_${wi}">▼</span>
+      </div>
+      <div class="work-detail" id="wdetail_${wi}">
+        <div class="work-detail-title">Настройка вопросов</div>
+        <div class="q-mode-row">
+          <label><input type="radio" name="qmode_${wi}" value="random" ${mode==='random'?'checked':''} onchange="setWorkMode(${wi},'random')"> Случайные</label>
+          &nbsp;&nbsp;
+          <label><input type="radio" name="qmode_${wi}" value="specific" ${mode==='specific'?'checked':''} onchange="setWorkMode(${wi},'specific')"> Конкретные</label>
+        </div>
+        <div class="rand-count-row" id="randRow_${wi}" style="${mode==='specific'?'display:none':''}">
+          <span style="color:var(--muted);">Взять случайных:</span>
+          <input type="number" min="1" max="${w.count}" value="${randCnt}"
+            oninput="setRandCount(${wi}, this.value)">
+          <span style="color:var(--muted);">из ${w.count}</span>
+        </div>
+        <div id="specificRows_${wi}" style="${mode==='random'?'display:none':''}">
+          <div class="work-q-actions">
+            <button class="btn-xs" onclick="selectAllQ(${wi})">Все</button>
+            <button class="btn-xs" onclick="clearAllQ(${wi})">Снять</button>
+            <span style="font-size:.72rem;color:var(--muted);margin-left:4px;" id="selCount_${wi}">${selIds.length} выбрано</span>
+          </div>
+          <div class="questions-grid">${questionsHTML}</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function changeQuestionSource(source) {
+  currentQuestionSource = source || 'main';
+  worksConfig = {};
+  await loadWorksForConfig();
+}
+
+function toggleWorkExpand(wi) {
+  const detail = document.getElementById('wdetail_' + wi);
+  const exp    = document.getElementById('wexp_' + wi);
+  const open   = detail.classList.toggle('open');
+  exp.classList.toggle('open', open);
+}
+
+function toggleWork(wi, checked) {
+  const w = worksData[wi];
+  if (!worksConfig[w.id]) worksConfig[w.id] = {};
+  worksConfig[w.id].selected = checked;
+  document.getElementById('work_' + wi).classList.toggle('selected', checked);
+}
+
+function setWorkMode(wi, mode) {
+  const w = worksData[wi];
+  if (!worksConfig[w.id]) worksConfig[w.id] = {};
+  worksConfig[w.id].mode = mode;
+  document.getElementById('randRow_'     + wi).style.display = mode === 'random'   ? '' : 'none';
+  document.getElementById('specificRows_'+ wi).style.display = mode === 'specific' ? '' : 'none';
+}
+
+function setRandCount(wi, val) {
+  const w = worksData[wi];
+  if (!worksConfig[w.id]) worksConfig[w.id] = {};
+  worksConfig[w.id].randomCount = parseInt(val) || 3;
+}
+
+function toggleQuestion(wi, qi, checked) {
+  const w = worksData[wi];
+  if (!worksConfig[w.id]) worksConfig[w.id] = {};
+  if (!worksConfig[w.id].questionIds) worksConfig[w.id].questionIds = [];
+  const ids = worksConfig[w.id].questionIds;
+  if (checked) { if (!ids.includes(qi)) ids.push(qi); }
+  else { const i = ids.indexOf(qi); if (i >= 0) ids.splice(i, 1); }
+  const el = document.getElementById('qi_' + wi + '_' + qi);
+  if (el) el.classList.toggle('q-selected', checked);
+  const sc = document.getElementById('selCount_' + wi);
+  if (sc) sc.textContent = ids.length + ' выбрано';
+}
+
+function selectAllQ(wi) {
+  const w   = worksData[wi];
+  const ids = w.questions.map((_, i) => i);
+  if (!worksConfig[w.id]) worksConfig[w.id] = {};
+  worksConfig[w.id].questionIds = ids;
+  ids.forEach(qi => {
+    const cb = document.querySelector(`#qi_${wi}_${qi} input`);
+    if (cb) cb.checked = true;
+    const el = document.getElementById('qi_' + wi + '_' + qi);
+    if (el) el.classList.add('q-selected');
+  });
+  const sc = document.getElementById('selCount_' + wi);
+  if (sc) sc.textContent = ids.length + ' выбрано';
+}
+
+function clearAllQ(wi) {
+  const w = worksData[wi];
+  if (!worksConfig[w.id]) worksConfig[w.id] = {};
+  worksConfig[w.id].questionIds = [];
+  w.questions.forEach((_, qi) => {
+    const cb = document.querySelector(`#qi_${wi}_${qi} input`);
+    if (cb) cb.checked = false;
+    const el = document.getElementById('qi_' + wi + '_' + qi);
+    if (el) el.classList.remove('q-selected');
+  });
+  const sc = document.getElementById('selCount_' + wi);
+  if (sc) sc.textContent = '0 выбрано';
+}
+
+async function saveConfig() {
+  const questionCount = parseInt(document.getElementById('cfgCount').value) || 15;
+  const questionTime  = parseInt(document.getElementById('cfgTimeRange').value) || 30;
+
+  // Rebuild worksConfig from current UI state
+  const finalConfig = {};
+  worksData.forEach((w, wi) => {
+    const wc = worksConfig[w.id] || {};
+    finalConfig[w.id] = {
+      selected:     wc.selected !== false,
+      mode:         wc.mode || 'random',
+      randomCount:  wc.randomCount || 3,
+      questionIds:  wc.questionIds || [],
+    };
+  });
+
+  try {
+      const res  = await fetch('/admin/config', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        password: adminPwd,
+        questionCount,
+        questionTime,
+        questionSource: currentQuestionSource,
+        worksConfig: finalConfig
+      }),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      document.getElementById('cfgOk').textContent = '✓ Настройки сохранены';
+      setTimeout(() => document.getElementById('cfgOk').textContent = '', 3000);
+      // Recalculate expected question count
+      let expCount = 0;
+      worksData.forEach((w, wi) => {
+        const wc = finalConfig[w.id];
+        if (!wc || wc.selected === false) return;
+        if (wc.mode === 'specific' && wc.questionIds.length > 0) {
+          expCount += wc.questionIds.length < w.count ? w.count : wc.questionIds.length;
+        } else {
+          expCount += Math.min(wc.randomCount || 3, w.count);
+        }
+      });
+      document.getElementById('statQ').textContent = Math.min(questionCount, expCount);
+    } else {
+      document.getElementById('cfgErr').textContent = data.error;
+    }
+  } catch (e) { document.getElementById('cfgErr').textContent = 'Ошибка: ' + e.message; }
+}
+
+// ── Users ──────────────────────────────────────────────────────
+async function loadUsers() {
+  try {
+    const data = await (await fetch(`/admin/users?password=${encodeURIComponent(adminPwd)}`)).json();
+    if (!Array.isArray(data)) { document.getElementById('usersBody').innerHTML = '<tr><td colspan="7" style="color:var(--muted);">Ошибка авторизации</td></tr>'; return; }
+    if (!data.length) { document.getElementById('usersBody').innerHTML = '<tr><td colspan="7" style="color:var(--muted);">Нет пользователей</td></tr>'; return; }
+    document.getElementById('usersBody').innerHTML = data.map((u, i) => `
+      <tr>
+        <td style="color:var(--muted);font-size:.8rem;">${i+1}</td>
+        <td style="font-weight:600;">${u.name}</td>
+        <td>${u.total_games}</td>
+        <td style="color:var(--green);">${u.total_correct}</td>
+        <td><span class="user-score-val">${u.best_score}</span></td>
+        <td><span class="user-score-val">${u.total_score}</span></td>
+        <td>
+          <div class="u-actions">
+            <button class="btn-tiny reset" onclick="resetPassword('${u.name}')">Пароль</button>
+            <button class="btn-tiny del" onclick="deleteUser('${u.name}')">✕</button>
+          </div>
+        </td>
+      </tr>
+    `).join('');
+  } catch { toast('Ошибка пользователей', 'err'); }
+}
+
+async function createUser() {
+  const name = document.getElementById('newUserName').value.trim();
+  const pass = document.getElementById('newUserPass').value.trim();
+  const err  = document.getElementById('createUserErr');
+  if (!name) { err.textContent = 'Введи имя'; return; }
+  if (pass.length < 4) { err.textContent = 'Пароль минимум 4 символа'; return; }
+  try {
+    const res = await fetch('/admin/create-user', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: adminPwd, username: name, newPassword: pass }),
+    });
+    const d = await res.json();
+    if (d.ok) {
+      toast(`✓ Игрок "${name}" создан`, 'ok');
+      document.getElementById('newUserName').value = '';
+      document.getElementById('newUserPass').value = '';
+      err.textContent = '';
+      loadUsers();
+    } else { err.textContent = d.error; }
+  } catch { err.textContent = 'Ошибка'; }
+}
+
+async function resetPassword(name) {
+  const np = prompt(`Новый пароль для "${name}":`);
+  if (!np || np.length < 4) { toast('Пароль минимум 4 символа', 'err'); return; }
+  try {
+    const r = await fetch('/admin/reset-password', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: adminPwd, username: name, newPassword: np }),
+    });
+    const d = await r.json();
+    if (d.ok) toast(`Пароль "${name}" сброшен`, 'ok');
+    else toast(d.error, 'err');
+  } catch { toast('Ошибка', 'err'); }
+}
+
+async function deleteUser(name) {
+  if (!confirm(`Удалить пользователя "${name}" и всю его историю?`)) return;
+  try {
+    const r = await fetch('/admin/delete-user', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: adminPwd, username: name }),
+    });
+    const d = await r.json();
+    if (d.ok) { toast(`"${name}" удалён`, 'ok'); loadUsers(); }
+    else toast(d.error, 'err');
+  } catch { toast('Ошибка', 'err'); }
+}
+
+async function deleteAllUsers() {
+  if (!confirm('Удалить всех игроков и всю их историю? Это действие нельзя отменить.')) return;
+  try {
+    const r = await fetch('/admin/delete-all-users', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: adminPwd }),
+    });
+    const d = await r.json();
+    if (d.ok) {
+      toast('Все игроки удалены', 'ok');
+      loadUsers();
+    } else {
+      toast(d.error, 'err');
+    }
+  } catch {
+    toast('Ошибка', 'err');
+  }
+}
+
+// ── Games history ───────────────────────────────────────────────
+async function loadGames() {
+  try {
+    const data = await (await fetch(`/admin/games?password=${encodeURIComponent(adminPwd)}`)).json();
+    if (!Array.isArray(data) || !data.length) {
+      document.getElementById('gamesBody').innerHTML = '<tr><td colspan="6" style="color:var(--muted);padding:16px;">Нет игр</td></tr>';
+      return;
+    }
+    document.getElementById('gamesBody').innerHTML = data.map((g, i) => {
+      const date = new Date(g.started_at * 1000).toLocaleString('ru-RU', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+      const fin  = g.finished_at ? '✓' : '⏳';
+      return `<tr onclick="openGameModal(${g.id}, '${date}')">
+        <td style="color:var(--muted);font-size:.8rem;">${data.length - i}</td>
+        <td>${date}</td>
+        <td>${g.question_count}</td>
+        <td>${g.player_count}</td>
+        <td><span class="game-score-val">${g.top_score ?? '—'}</span></td>
+        <td style="color:${g.finished_at ? 'var(--green)' : 'var(--muted)'}">${fin}</td>
+      </tr>`;
+    }).join('');
+  } catch { toast('Ошибка загрузки истории', 'err'); }
+}
+
+async function openGameModal(gameId, dateStr) {
+  document.getElementById('modalTitle').textContent = 'Игра · ' + dateStr;
+  document.getElementById('modalBody').innerHTML    = '<div style="color:var(--muted);">Загрузка...</div>';
+  document.getElementById('modalOverlay').classList.add('open');
+  try {
+    const res  = await fetch(`/admin/game-results?password=${encodeURIComponent(adminPwd)}&gameId=${gameId}`);
+    const data = await res.json();
+    const medals = ['🥇','🥈','🥉'];
+    let html = '<div style="font-family:\'Unbounded\',sans-serif;font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px;">Результаты</div>';
+    if (data.results && data.results.length) {
+      html += data.results.map(r => `
+        <div class="result-player-row">
+          <div class="rp-rank">${medals[r.rank-1] || '#' + r.rank}</div>
+          <div class="rp-name">${r.name}</div>
+          <div style="font-size:.75rem;color:var(--muted);">${r.correct}✓ ${r.wrong}✗ · ср.${r.avg_time ? r.avg_time.toFixed(1) : '—'}с</div>
+          <div class="rp-score">${r.score}</div>
+        </div>
+      `).join('');
+    } else {
+      html += '<div style="color:var(--muted);font-size:.85rem;">Нет результатов</div>';
+    }
+    document.getElementById('modalBody').innerHTML = html;
+  } catch {
+    document.getElementById('modalBody').innerHTML = '<div style="color:var(--muted);">Ошибка</div>';
+  }
+}
+
+function closeModal(e)  { if (e.target === document.getElementById('modalOverlay')) closeModalDirect(); }
+function closeModalDirect() { document.getElementById('modalOverlay').classList.remove('open'); }
+
+// ── Authors / Files ─────────────────────────────────────────────
+async function loadAuthors() {
+  try {
+    const data = await (await fetch('/admin/questions')).json();
+    document.getElementById('statAuthors').textContent = data.length;
+    const c = document.getElementById('authorList');
+    if (!data.length) { c.innerHTML = '<div style="color:var(--muted);">Нет файлов</div>'; return; }
+    c.innerHTML = data.map(a => `
+      <div class="author-row">
+        <div class="author-icon">📖</div>
+        <div>
+          <div style="font-weight:600;font-size:.9rem;">${a.author}</div>
+          <div style="font-size:.75rem;color:var(--muted);">${a.work || 'Не указано'}</div>
+        </div>
+        <div class="author-badge">${a.count} вопросов</div>
+      </div>
+    `).join('');
+  } catch { toast('Ошибка авторов', 'err'); }
+}
+
+const dropZone = document.getElementById('dropZone');
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag'));
+dropZone.addEventListener('drop', handleDrop);
+function handleFileSelect(e) { const f = e.target.files[0]; if (f) uploadFile(f); }
+function handleDrop(e) { e.preventDefault(); dropZone.classList.remove('drag'); const f = e.dataTransfer.files[0]; if (f) uploadFile(f); }
+
+function uploadFile(file) {
+  if (!file.name.endsWith('.json')) { toast('Только .json!', 'err'); return; }
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    try { JSON.parse(e.target.result); } catch { toast('Невалидный JSON!', 'err'); return; }
+    try {
+      const resp = await fetch('/admin/upload', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename: file.name, content: e.target.result }),
+      });
+      const data = await resp.json();
+      if (data.ok) { toast(`✓ ${file.name} загружен`, 'ok'); loadAuthors(); loadConfig(); }
+      else toast(data.error, 'err');
+    } catch (err) { toast('Ошибка: ' + err.message, 'err'); }
+  };
+  reader.readAsText(file, 'utf-8');
+}
+
+// Initial load
+loadAuthors();
+</script>
+</body>
+</html>

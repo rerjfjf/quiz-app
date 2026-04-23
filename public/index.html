@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>ЛитКвиз</title>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700;900&family=Golos+Text:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="/socket.io/socket.io.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #0a0a12; --card: #14141f; --border: #22223a;
+  --accent: #e8c547; --purple: #7c3aed; --cyan: #06b6d4;
+  --red: #ef4444; --green: #22c55e; --text: #f0f0ff; --muted: #5a5a7a; --r: 16px;
+  --c0: #7c3aed; --c1: #0ea5e9; --c2: #f97316; --c3: #22c55e;
+}
+body {
+  font-family: 'Golos Text', sans-serif;
+  background: var(--bg); color: var(--text);
+  min-height: 100dvh; display: flex; flex-direction: column; overflow: hidden;
+}
+body::before {
+  content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background:
+    radial-gradient(ellipse 60% 40% at 15% 15%, rgba(124,58,237,.1) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 50% at 85% 85%, rgba(6,182,212,.07) 0%, transparent 60%);
+}
+.screen {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 20px; z-index: 1;
+  opacity: 0; transform: translateY(16px);
+  transition: opacity .3s ease, transform .3s ease;
+  pointer-events: none; overflow-y: auto;
+}
+.screen.active { opacity: 1; transform: translateY(0); pointer-events: all; }
+.logo {
+  font-family: 'Unbounded', sans-serif;
+  font-size: clamp(2rem, 10vw, 3.2rem);
+  font-weight: 900; letter-spacing: -.02em; line-height: 1; margin-bottom: 6px;
+}
+.logo span { color: var(--accent); }
+.subtitle { color: var(--muted); font-size: .8rem; letter-spacing: .15em; text-transform: uppercase; margin-bottom: 32px; }
+.auth-card {
+  width: 100%; max-width: 340px; background: var(--card);
+  border: 1px solid var(--border); border-radius: 20px; padding: 24px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.field-label { font-size: .7rem; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-bottom: 5px; display: block; }
+input[type=text], input[type=password] {
+  width: 100%; background: var(--bg); border: 2px solid var(--border);
+  border-radius: var(--r); padding: 13px 16px;
+  font-family: 'Golos Text', sans-serif; font-size: 1rem;
+  color: var(--text); outline: none; transition: border-color .2s;
+}
+input[type=text]:focus, input[type=password]:focus { border-color: var(--accent); }
+input::placeholder { color: var(--muted); }
+.btn {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%; background: var(--accent); color: #0a0a12;
+  border: none; border-radius: var(--r); padding: 14px 20px;
+  font-family: 'Unbounded', sans-serif; font-size: .82rem; font-weight: 700;
+  letter-spacing: .05em; cursor: pointer; margin-top: 4px;
+  transition: transform .15s; -webkit-tap-highlight-color: transparent;
+}
+.btn:active { transform: scale(.97); }
+.btn.ghost { background: transparent; border: 2px solid var(--border); color: var(--text); margin-top: 6px; }
+.btn.small { padding: 9px 16px; font-size: .7rem; width: auto; }
+.err { color: var(--red); font-size: .85rem; text-align: center; min-height: 18px; }
+.hint-text { font-size: .75rem; color: var(--muted); text-align: center; line-height: 1.5; }
+
+/* Lobby */
+.lobby-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 24px; padding: 28px 24px; text-align: center; width: 100%; max-width: 360px;
+}
+.nick { font-family: 'Unbounded', sans-serif; font-size: 1.2rem; font-weight: 700; color: var(--accent); margin-bottom: 4px; }
+.wait-label { color: var(--muted); font-size: .85rem; margin-bottom: 20px; }
+.pulse-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--green); margin-right: 7px; animation: blink 1.5s infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+.count-big { font-family: 'Unbounded', sans-serif; font-size: 3rem; font-weight: 900; color: var(--cyan); line-height: 1; }
+.count-label { font-size: .7rem; color: var(--muted); text-transform: uppercase; letter-spacing: .12em; margin-top: 4px; }
+.stats-mini { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 100%; max-width: 360px; margin-top: 14px; }
+.sm-box { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 10px 8px; text-align: center; }
+.sm-val { font-family: 'Unbounded', sans-serif; font-size: 1.2rem; font-weight: 900; color: var(--accent); }
+.sm-label { font-size: .6rem; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-top: 2px; }
+
+/* Countdown */
+.cd-num { font-family: 'Unbounded', sans-serif; font-size: clamp(7rem, 28vw, 11rem); font-weight: 900; color: var(--accent); line-height: 1; }
+@keyframes popIn { 0%{transform:scale(1.5);opacity:0} 100%{transform:scale(1);opacity:1} }
+.cd-label { color: var(--muted); text-transform: uppercase; letter-spacing: .2em; font-size: .8rem; margin-top: 14px; }
+
+/* Question */
+#s-question { justify-content: flex-start; padding: 14px 14px 20px; overflow-y: auto; gap: 0; }
+.q-topbar { width: 100%; max-width: 500px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; flex-shrink: 0; }
+.q-counter { font-family: 'Unbounded', sans-serif; font-size: .7rem; font-weight: 700; color: var(--muted); }
+.q-counter span { color: var(--text); }
+.q-author { font-size: .7rem; color: var(--cyan); text-align: right; max-width: 55%; }
+.timer-wrap { width: 100%; max-width: 500px; display: flex; align-items: center; gap: 14px; margin-bottom: 14px; flex-shrink: 0; }
+.timer-ring-wrap { position: relative; width: 54px; height: 54px; flex-shrink: 0; }
+.timer-ring-wrap svg { transform: rotate(-90deg); }
+.ring-bg { fill: none; stroke: var(--border); stroke-width: 4; }
+.ring-fg { fill: none; stroke-width: 4; stroke-linecap: round; }
+.timer-num { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: 'Unbounded', sans-serif; font-size: .95rem; font-weight: 900; }
+.timer-bar-outer { flex: 1; height: 8px; background: var(--border); border-radius: 99px; overflow: hidden; }
+.timer-bar-inner { height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--accent), var(--purple)); }
+.timer-bar-inner.urgent { background: linear-gradient(90deg, var(--red), #ff7070); }
+.q-text { font-size: clamp(.95rem, 3.5vw, 1.15rem); font-weight: 600; line-height: 1.5; text-align: center; margin-bottom: 18px; width: 100%; max-width: 500px; flex-shrink: 0; }
+.options { width: 100%; max-width: 500px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; flex-shrink: 0; }
+.opt {
+  background: var(--card); border: 2px solid var(--border); border-radius: var(--r);
+  padding: 14px 10px 12px; cursor: pointer; text-align: center;
+  font-family: 'Golos Text', sans-serif; font-size: .88rem; font-weight: 500;
+  color: var(--text); line-height: 1.35; transition: background .15s, transform .12s;
+  -webkit-tap-highlight-color: transparent; min-height: 76px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px;
+}
+.opt-letter { font-family: 'Unbounded', sans-serif; font-size: .6rem; font-weight: 700; opacity: .5; letter-spacing: .1em; }
+.opt[data-i="0"] { --oc: var(--c0); }
+.opt[data-i="1"] { --oc: var(--c1); }
+.opt[data-i="2"] { --oc: var(--c2); }
+.opt[data-i="3"] { --oc: var(--c3); }
+.opt.hoverable:hover { border-color: var(--oc); }
+.opt:not(.disabled):active { transform: scale(.95); }
+.opt.selected { border-color: var(--oc); background: color-mix(in srgb, var(--oc) 15%, transparent); }
+.opt.correct  { border-color: var(--green) !important; background: rgba(34,197,94,.18) !important; }
+.opt.wrong    { border-color: var(--red) !important;   background: rgba(239,68,68,.12) !important; opacity: .7; }
+.opt.disabled { cursor: default; }
+.answered-msg { width: 100%; max-width: 500px; margin-top: 16px; flex-shrink: 0; text-align: center; font-size: .9rem; color: var(--muted); }
+.answered-msg strong { color: var(--accent); display: block; font-size: 1rem; margin-bottom: 4px; }
+
+/* Result */
+.result-icon { font-size: 4.5rem; line-height: 1; margin-bottom: 14px; }
+.result-title { font-family: 'Unbounded', sans-serif; font-size: 1.6rem; font-weight: 900; margin-bottom: 8px; }
+.result-pts { font-size: 1rem; color: var(--accent); font-weight: 600; margin-bottom: 2px; }
+.result-breakdown { font-size: .8rem; color: var(--muted); margin-bottom: 2px; }
+.result-correct { font-size: .86rem; color: var(--accent); margin-bottom: 4px; line-height: 1.4; text-align: center; max-width: 420px; }
+.result-total { color: var(--muted); font-size: .85rem; margin-bottom: 4px; }
+.result-speed { color: var(--cyan); font-size: .8rem; }
+.next-hint { margin-top: 24px; color: var(--muted); font-size: .8rem; }
+.drain-bar { width: 160px; height: 3px; background: var(--border); border-radius: 99px; overflow: hidden; margin: 8px auto 0; }
+.drain-fill { height: 100%; background: var(--accent); border-radius: 99px; width: 100%; }
+
+/* Finish */
+.finish-title { font-family: 'Unbounded', sans-serif; font-size: 1.4rem; font-weight: 900; margin-bottom: 4px; }
+.finish-sub { color: var(--muted); font-size: .8rem; letter-spacing: .1em; text-transform: uppercase; margin-bottom: 20px; }
+.lb { width: 100%; max-width: 380px; }
+.lb-row { display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: var(--card); border: 1px solid var(--border); border-radius: var(--r); margin-bottom: 7px; }
+.lb-row.me { border-color: var(--accent); }
+.lb-rank { font-family: 'Unbounded', sans-serif; font-weight: 900; font-size: 1rem; width: 26px; flex-shrink: 0; color: var(--muted); }
+.lb-row:nth-child(1) .lb-rank { color: #ffd700; }
+.lb-row:nth-child(2) .lb-rank { color: #c0c0c0; }
+.lb-row:nth-child(3) .lb-rank { color: #cd7f32; }
+.lb-name { flex: 1; font-weight: 600; font-size: .88rem; }
+.lb-score { font-family: 'Unbounded', sans-serif; font-size: .78rem; font-weight: 700; color: var(--accent); }
+
+/* Profile */
+#s-profile { justify-content: flex-start; padding-top: 40px; gap: 14px; }
+.profile-header { width: 100%; max-width: 400px; display: flex; align-items: center; gap: 14px; background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 16px 20px; }
+.profile-avatar { width: 48px; height: 48px; border-radius: 14px; background: linear-gradient(135deg, var(--purple), var(--cyan)); display: flex; align-items: center; justify-content: center; font-family: 'Unbounded', sans-serif; font-weight: 900; font-size: 1.2rem; flex-shrink: 0; }
+.profile-name { font-family: 'Unbounded', sans-serif; font-size: 1rem; font-weight: 700; }
+.profile-sub { font-size: .75rem; color: var(--muted); margin-top: 2px; }
+.stats-grid { width: 100%; max-width: 400px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.stat-box { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 12px 8px; text-align: center; }
+.stat-val { font-family: 'Unbounded', sans-serif; font-size: 1.3rem; font-weight: 900; color: var(--accent); }
+.stat-label { font-size: .6rem; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-top: 3px; }
+.history-section { width: 100%; max-width: 400px; }
+.history-title { font-family: 'Unbounded', sans-serif; font-size: .7rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .1em; margin-bottom: 10px; }
+.game-row { display: flex; align-items: center; gap: 10px; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 10px 14px; margin-bottom: 7px; cursor: pointer; transition: border-color .15s; }
+.game-rank { font-family: 'Unbounded', sans-serif; font-weight: 900; font-size: .9rem; color: var(--muted); width: 24px; flex-shrink: 0; }
+.game-info { flex: 1; }
+.game-score { font-family: 'Unbounded', sans-serif; font-size: .78rem; font-weight: 700; color: var(--accent); }
+.game-detail { font-size: .7rem; color: var(--muted); margin-top: 1px; }
+.game-correct { font-size: .75rem; color: var(--green); }
+
+/* Modal */
+.modal-overlay { position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,.7); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; padding: 20px; opacity: 0; pointer-events: none; transition: opacity .25s; }
+.modal-overlay.open { opacity: 1; pointer-events: all; }
+.modal { background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 24px; width: 100%; max-width: 420px; max-height: 80vh; overflow-y: auto; }
+.modal-title { font-family: 'Unbounded', sans-serif; font-size: .85rem; font-weight: 700; margin-bottom: 16px; }
+.ah-row { display: flex; align-items: flex-start; gap: 10px; padding: 8px 10px; border-radius: 10px; margin-bottom: 6px; background: rgba(255,255,255,.03); border: 1px solid var(--border); font-size: .82rem; }
+.ah-row.correct { border-color: rgba(34,197,94,.3); }
+.ah-row.wrong   { border-color: rgba(239,68,68,.25); }
+.ah-icon { font-size: .95rem; flex-shrink: 0; margin-top: 1px; }
+.ah-q { flex: 1; line-height: 1.4; }
+.ah-q small { display: block; color: var(--muted); font-size: .72rem; margin-top: 2px; }
+.ah-pts { font-family: 'Unbounded', sans-serif; font-size: .7rem; font-weight: 700; flex-shrink: 0; }
+.ah-row.correct .ah-pts { color: var(--green); }
+.ah-row.wrong   .ah-pts { color: var(--red); }
+
+/* Connection banner */
+#connBanner {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+  background: var(--red); color: #fff; text-align: center;
+  font-family: 'Unbounded', sans-serif; font-size: .72rem; font-weight: 700;
+  padding: 8px; letter-spacing: .08em;
+  transform: translateY(-100%); transition: transform .3s;
+}
+#connBanner.show { transform: translateY(0); }
+</style>
+</head>
+<body>
+
+<div id="connBanner">⚠ Нет соединения — переподключение...</div>
+
+<!-- AUTH -->
+<div class="screen active" id="s-auth">
+  <div class="logo">ЛИТ<span>КВИЗ</span></div>
+  <div class="subtitle">Русская литература</div>
+  <div class="auth-card">
+    <div>
+      <label class="field-label">Имя</label>
+      <input type="text" id="loginName" placeholder="Твоё имя" maxlength="24" autocomplete="username">
+    </div>
+    <div>
+      <label class="field-label" style="margin-top:4px;">Пароль</label>
+      <input type="password" id="loginPass" placeholder="Пароль" autocomplete="current-password">
+    </div>
+    <button class="btn" onclick="doLogin()">Войти →</button>
+    <div class="err" id="authErr"></div>
+    <div class="hint-text">Аккаунт выдаёт администратор</div>
+  </div>
+</div>
+
+<!-- LOBBY -->
+<div class="screen" id="s-lobby">
+  <div class="lobby-card">
+    <div class="nick" id="lobbyNick">—</div>
+    <div class="wait-label"><span class="pulse-dot"></span>Ждём начала игры</div>
+    <div class="count-big" id="lobbyCount">0</div>
+    <div class="count-label">игроков в лобби</div>
+  </div>
+  <div class="stats-mini" id="lobbyStat" style="display:none;">
+    <div class="sm-box"><div class="sm-val" id="lsGames">0</div><div class="sm-label">Игр</div></div>
+    <div class="sm-box"><div class="sm-val" id="lsBest">0</div><div class="sm-label">Рекорд</div></div>
+    <div class="sm-box"><div class="sm-val" id="lsCorrect">0</div><div class="sm-label">Верных</div></div>
+  </div>
+  <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;justify-content:center;">
+    <button class="btn ghost small" onclick="showProfile()">📊 Статистика</button>
+    <button class="btn ghost small" onclick="leaveLobby()">← Выйти</button>
+  </div>
+</div>
+
+<!-- COUNTDOWN -->
+<div class="screen" id="s-countdown">
+  <div class="cd-label">Игра начнётся через</div>
+  <div class="cd-num" id="cdNum">5</div>
+</div>
+
+<!-- QUESTION -->
+<div class="screen" id="s-question">
+  <div class="q-topbar">
+    <div class="q-counter">Вопрос <span id="qNum">1</span> / <span id="qTotal">9</span></div>
+    <div class="q-author" id="qAuthor"></div>
+  </div>
+  <div class="timer-wrap">
+    <div class="timer-ring-wrap">
+      <svg viewBox="0 0 54 54" width="54" height="54">
+        <circle class="ring-bg" cx="27" cy="27" r="23"/>
+        <circle class="ring-fg" id="ringFg" cx="27" cy="27" r="23"
+          stroke="var(--cyan)" stroke-dasharray="144.51" stroke-dashoffset="0"/>
+      </svg>
+      <div class="timer-num" id="timerNum">30</div>
+    </div>
+    <div class="timer-bar-outer">
+      <div class="timer-bar-inner" id="timerBar" style="width:100%"></div>
+    </div>
+  </div>
+  <div class="q-text" id="qText"></div>
+  <div class="options" id="optionsGrid"></div>
+  <div class="answered-msg" id="answeredMsg" style="display:none;">
+    <strong id="answeredStrong">Ответ принят!</strong>
+    <span id="answeredSub">Ждём остальных...</span>
+  </div>
+</div>
+
+<!-- RESULT -->
+<div class="screen" id="s-result">
+  <div class="result-icon" id="resIcon">🎯</div>
+  <div class="result-title" id="resTitle">Правильно!</div>
+  <div class="result-pts" id="resPts">+500 очков</div>
+  <div class="result-breakdown" id="resBreakdown"></div>
+  <div class="result-correct" id="resCorrect"></div>
+  <div class="result-total" id="resTotal">Итого: 500</div>
+  <div class="result-speed" id="resSpeed"></div>
+  <div class="next-hint">Следующий вопрос...</div>
+  <div class="drain-bar"><div class="drain-fill" id="drainFill"></div></div>
+</div>
+
+<!-- FINISH -->
+<div class="screen" id="s-finish">
+  <div class="finish-title">🏆 Итоги</div>
+  <div class="finish-sub">Квиз завершён</div>
+  <div class="lb" id="lbList"></div>
+  <button class="btn ghost" style="max-width:260px;margin-top:8px;" onclick="goToLobbyAfterGame()">В лобби</button>
+</div>
+
+<!-- PROFILE -->
+<div class="screen" id="s-profile">
+  <div class="profile-header" style="width:100%;max-width:400px;">
+    <div class="profile-avatar" id="profAvatar">?</div>
+    <div>
+      <div class="profile-name" id="profName">—</div>
+      <div class="profile-sub" id="profSub">Загрузка...</div>
+    </div>
+    <button class="btn ghost small" style="margin-left:auto;" onclick="show('s-lobby')">←</button>
+  </div>
+  <div class="stats-grid">
+    <div class="stat-box"><div class="stat-val" id="profGames">0</div><div class="stat-label">Игр</div></div>
+    <div class="stat-box"><div class="stat-val" id="profScore">0</div><div class="stat-label">Сумма</div></div>
+    <div class="stat-box"><div class="stat-val" id="profBest">0</div><div class="stat-label">Рекорд</div></div>
+    <div class="stat-box"><div class="stat-val" id="profCorrect">0</div><div class="stat-label">Верных</div></div>
+    <div class="stat-box"><div class="stat-val" id="profWrong">0</div><div class="stat-label">Неверных</div></div>
+    <div class="stat-box"><div class="stat-val" id="profPct">0%</div><div class="stat-label">Точность</div></div>
+  </div>
+  <div class="history-section">
+    <div class="history-title">История игр</div>
+    <div id="gameHistory"><div style="color:var(--muted);font-size:.85rem;">Загрузка...</div></div>
+  </div>
+</div>
+
+<!-- KICKED -->
+<div class="screen" id="s-kicked">
+  <div style="text-align:center;padding:20px;">
+    <div style="font-size:3.5rem;margin-bottom:14px">🚫</div>
+    <div style="font-family:'Unbounded',sans-serif;font-size:1.1rem;font-weight:700;margin-bottom:8px">Тебя удалили из игры</div>
+    <button class="btn" style="max-width:220px;margin-top:20px;" onclick="kickedReturn()">Войти снова</button>
+  </div>
+</div>
+
+<!-- Game detail modal -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+  <div class="modal">
+    <div class="modal-title" id="modalTitle">История вопросов</div>
+    <div id="modalBody"></div>
+    <button class="btn ghost" style="margin-top:12px;" onclick="closeModalDirect()">Закрыть</button>
+  </div>
+</div>
+
+<script>
+// ── Socket with auto-reconnect ──────────────────────────────────
+const socket = io({ reconnection: true, reconnectionDelay: 1000, reconnectionAttempts: Infinity });
+
+// ── State ───────────────────────────────────────────────────────
+let myUserId = null;
+let myName   = '';
+let myScore  = 0;
+let answered = false;
+let resultShown = false;
+let questionTotal = 9;
+let currentQuestionTime = 30;
+let currentOptions = [];
+let drainRaf = null;
+let allowAutoJoin = false;
+
+// ── Connection banner ───────────────────────────────────────────
+socket.on('connect', () => {
+  document.getElementById('connBanner').classList.remove('show');
+  // Re-join only after a regular reconnect, not after reset/kick/manual leave
+  if (allowAutoJoin && myUserId && myName) {
+    socket.emit('join', { userId: myUserId, name: myName });
+  }
+});
+socket.on('disconnect', () => {
+  document.getElementById('connBanner').classList.add('show');
+});
+
+// Force disconnect from server (admin reset)
+socket.on('forceDisconnect', () => {
+  allowAutoJoin = false;
+  myUserId = null; myName = ''; myScore = 0;
+  answered = false; resultShown = false;
+  if (drainRaf) cancelAnimationFrame(drainRaf);
+  document.getElementById('loginName').value = '';
+  document.getElementById('loginPass').value = '';
+  show('s-auth');
+});
+
+// ── Drain ───────────────────────────────────────────────────────
+function startDrain(ms) {
+  if (drainRaf) cancelAnimationFrame(drainRaf);
+  const fill = document.getElementById('drainFill');
+  fill.style.width = '100%';
+  const start = performance.now();
+  function frame(ts) {
+    const pct = Math.max(0, 1 - (ts - start) / ms);
+    fill.style.width = (pct * 100) + '%';
+    if (pct > 0) drainRaf = requestAnimationFrame(frame);
+  }
+  drainRaf = requestAnimationFrame(frame);
+}
+
+// ── Screen ──────────────────────────────────────────────────────
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// ── Auth ────────────────────────────────────────────────────────
+function showAuthErr(msg) {
+  const el = document.getElementById('authErr');
+  el.textContent = msg;
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.textContent = '', 5000);
+}
+
+function doLogin() {
+  const name     = document.getElementById('loginName').value.trim();
+  const password = document.getElementById('loginPass').value;
+  if (!name || !password) { showAuthErr('Заполни все поля'); return; }
+  socket.emit('login', { name, password });
+}
+
+['loginName','loginPass'].forEach(id => {
+  document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+});
+
+socket.on('authOk', ({ userId, name }) => {
+  allowAutoJoin = true;
+  myUserId = userId;
+  myName   = name;
+  document.getElementById('lobbyNick').textContent = name;
+  document.getElementById('profAvatar').textContent = name[0].toUpperCase();
+  document.getElementById('profName').textContent   = name;
+  socket.emit('join', { userId, name });
+  loadLobbyStat();
+});
+socket.on('authError', msg => showAuthErr(msg));
+
+// ── Lobby ───────────────────────────────────────────────────────
+socket.on('joined', () => show('s-lobby'));
+socket.on('joinError', msg => { showAuthErr(msg); show('s-auth'); });
+
+function leaveLobby() {
+  allowAutoJoin = false;
+  socket.emit('leave');
+  myUserId = null; myName = ''; myScore = 0;
+  answered = false; resultShown = false;
+  document.getElementById('loginName').value = '';
+  document.getElementById('loginPass').value = '';
+  show('s-auth');
+}
+
+function kickedReturn() {
+  allowAutoJoin = false;
+  myUserId = null; myName = ''; myScore = 0;
+  document.getElementById('loginName').value = '';
+  document.getElementById('loginPass').value = '';
+  show('s-auth');
+}
+
+async function loadLobbyStat() {
+  if (!myUserId) return;
+  try {
+    const res = await fetch('/api/my-stats?userId=' + myUserId);
+    const { user } = await res.json();
+    if (!user) return;
+    document.getElementById('lsGames').textContent   = user.total_games;
+    document.getElementById('lsBest').textContent    = user.best_score;
+    document.getElementById('lsCorrect').textContent = user.total_correct;
+    document.getElementById('lobbyStat').style.display = 'grid';
+  } catch {}
+}
+
+socket.on('stateSync', ({ playerCount, players }) => {
+  document.getElementById('lobbyCount').textContent = playerCount;
+});
+socket.on('playerList', ({ count }) => {
+  document.getElementById('lobbyCount').textContent = count;
+});
+
+// ── Timer UI ────────────────────────────────────────────────────
+const CIRC = 2 * Math.PI * 23;
+function setTimerUI(left, total) {
+  const pct    = left / total;
+  const urgent = left <= 10;
+  const ring   = document.getElementById('ringFg');
+  ring.style.strokeDashoffset = CIRC * (1 - pct);
+  ring.style.stroke           = urgent ? 'var(--red)' : left <= 20 ? 'var(--accent)' : 'var(--cyan)';
+  const num = document.getElementById('timerNum');
+  num.textContent  = left;
+  num.style.color  = urgent ? 'var(--red)' : 'var(--text)';
+  const bar = document.getElementById('timerBar');
+  bar.style.width  = (pct * 100) + '%';
+  bar.classList.toggle('urgent', urgent);
+}
+
+// ── Options ─────────────────────────────────────────────────────
+function buildOptions(options) {
+  const grid    = document.getElementById('optionsGrid');
+  grid.innerHTML = '';
+  const letters = ['А', 'Б', 'В', 'Г'];
+  options.forEach((text, i) => {
+    const btn = document.createElement('button');
+    btn.className   = 'opt';
+    btn.dataset.i   = i;
+    btn.innerHTML   = `<span class="opt-letter">${letters[i]}</span>${text}`;
+    btn.onclick     = () => submitAnswer(i);
+    grid.appendChild(btn);
+  });
+  setTimeout(() => {
+    grid.querySelectorAll('.opt').forEach(b => b.classList.add('hoverable'));
+  }, 200);
+}
+
+function submitAnswer(idx) {
+  if (answered) return;
+  answered = true;
+  socket.emit('answer', { optionIndex: idx });
+  document.querySelectorAll('.opt').forEach((btn, i) => {
+    btn.classList.remove('hoverable');
+    btn.classList.add('disabled');
+    if (i === idx) btn.classList.add('selected');
+  });
+  document.getElementById('answeredMsg').style.display = 'block';
+  document.getElementById('answeredSub').textContent   = 'Ждём остальных...';
+}
+
+// ── Game events ─────────────────────────────────────────────────
+socket.on('countdown', ({ count }) => {
+  show('s-countdown');
+  const el = document.getElementById('cdNum');
+  el.textContent    = count;
+  el.style.animation = 'none';
+  void el.offsetWidth;
+  el.style.animation = 'popIn .9s ease';
+});
+
+socket.on('question', ({ questionIndex, total, question, options, author, work, timeLeft }) => {
+  answered        = false;
+  resultShown     = false;
+  questionTotal   = total;
+  currentQuestionTime = timeLeft || 30;
+  currentOptions  = Array.isArray(options) ? options : [];
+
+  document.getElementById('qNum').textContent    = questionIndex + 1;
+  document.getElementById('qTotal').textContent  = total;
+  document.getElementById('qAuthor').textContent = author + (work ? ' · ' + work : '');
+  document.getElementById('qText').textContent   = question;
+  document.getElementById('answeredMsg').style.display = 'none';
+
+  buildOptions(options);
+  setTimerUI(currentQuestionTime, currentQuestionTime);
+  show('s-question');
+});
+
+socket.on('timer', ({ timeLeft }) => setTimerUI(timeLeft, currentQuestionTime));
+
+socket.on('answerAccepted', ({ correct, elapsed }) => {
+  document.getElementById('answeredSub').textContent = correct
+    ? `Верно! Ответил за ${elapsed} сек — ждём итоги...`
+    : `Неверно — ждём итоги...`;
+});
+
+socket.on('reveal', ({ correctIndex }) => {
+  document.querySelectorAll('.opt').forEach((btn, i) => {
+    btn.classList.remove('hoverable');
+    btn.classList.add('disabled');
+    if (i === correctIndex) btn.classList.add('correct');
+    else if (btn.classList.contains('selected')) btn.classList.add('wrong');
+  });
+  if (!resultShown) {
+    resultShown = true;
+    showResult({ correct: false, points: 0, totalScore: myScore, elapsed: null, speedBonus: 0, correctIndex });
+  }
+});
+
+socket.on('answerResult', ({ correct, points, totalScore, elapsed, speedBonus, correctIndex }) => {
+  myScore     = totalScore;
+  resultShown = true;
+  showResult({ correct, points, totalScore, elapsed, speedBonus, correctIndex });
+});
+
+function formatCorrectAnswer(correctIndex) {
+  const letters = ['А', 'Б', 'В', 'Г'];
+  const optionText = currentOptions[correctIndex];
+  if (optionText == null || correctIndex == null) return '';
+  return `Правильный ответ: ${letters[correctIndex]}. ${optionText}`;
+}
+
+function showResult({ correct, points, totalScore, elapsed, speedBonus, correctIndex }) {
+  const noAnswer = elapsed === null;
+  document.getElementById('resIcon').textContent      = correct ? '🎯' : noAnswer ? '⏱️' : '❌';
+  document.getElementById('resTitle').textContent     = correct ? 'Правильно!' : noAnswer ? 'Время вышло!' : 'Неверно';
+  document.getElementById('resPts').textContent       = points > 0 ? '+' + points + ' очков' : '0 очков';
+  document.getElementById('resBreakdown').textContent = correct && points > 0 ? `500 за ответ + ${speedBonus} за скорость` : '';
+  document.getElementById('resCorrect').textContent   = correct ? '' : formatCorrectAnswer(correctIndex);
+  document.getElementById('resTotal').textContent     = 'Итого: ' + totalScore;
+  document.getElementById('resSpeed').textContent     = elapsed !== null ? 'Ответил за ' + elapsed + ' сек' : '';
+  startDrain(5000);
+  show('s-result');
+}
+
+socket.on('gameEnd', ({ leaderboard }) => {
+  if (drainRaf) cancelAnimationFrame(drainRaf);
+  answered = false;
+  resultShown = false;
+  const medals = ['🥇','🥈','🥉'];
+  document.getElementById('lbList').innerHTML = leaderboard.slice(0, 10).map(p => `
+    <div class="lb-row${p.name === myName ? ' me' : ''}">
+      <div class="lb-rank">${medals[p.rank-1] || p.rank}</div>
+      <div class="lb-name">${p.name}${p.name === myName ? ' ← ты' : ''}</div>
+      <div style="text-align:right">
+        <div class="lb-score">${p.score}</div>
+        <div style="font-size:.66rem;color:var(--muted)">${p.correct}/${p.total} верных</div>
+      </div>
+    </div>
+  `).join('');
+  show('s-finish');
+  setTimeout(loadLobbyStat, 500);
+});
+
+function goToLobbyAfterGame() {
+  show('s-lobby');
+  loadLobbyStat();
+}
+
+socket.on('gameReset', () => {
+  allowAutoJoin = false;
+  myScore = 0; answered = false; resultShown = false;
+  if (drainRaf) cancelAnimationFrame(drainRaf);
+  // Server will send forceDisconnect, handled above
+});
+
+socket.on('kicked', () => {
+  allowAutoJoin = false;
+  myUserId = null; myName = ''; myScore = 0;
+  document.getElementById('loginName').value = '';
+  document.getElementById('loginPass').value = '';
+  show('s-kicked');
+});
+
+// ── Profile ─────────────────────────────────────────────────────
+async function showProfile() {
+  show('s-profile');
+  if (!myUserId) return;
+  try {
+    const res = await fetch('/api/my-stats?userId=' + myUserId);
+    const { user, games } = await res.json();
+    document.getElementById('profGames').textContent   = user.total_games;
+    document.getElementById('profScore').textContent   = user.total_score;
+    document.getElementById('profBest').textContent    = user.best_score;
+    document.getElementById('profCorrect').textContent = user.total_correct;
+    document.getElementById('profWrong').textContent   = user.total_wrong;
+    const total = user.total_correct + user.total_wrong;
+    document.getElementById('profPct').textContent = total > 0 ? Math.round(user.total_correct / total * 100) + '%' : '—';
+    document.getElementById('profSub').textContent = user.total_games > 0 ? `${user.total_games} игр · рекорд ${user.best_score}` : 'Ещё не играл';
+
+    if (!games.length) {
+      document.getElementById('gameHistory').innerHTML = '<div style="color:var(--muted);font-size:.85rem;">Нет истории игр</div>';
+      return;
+    }
+    const medals = ['🥇','🥈','🥉'];
+    document.getElementById('gameHistory').innerHTML = games.map(g => {
+      const date = new Date(g.started_at * 1000);
+      const dateStr = date.toLocaleDateString('ru-RU', { day:'numeric', month:'short', year:'numeric' });
+      return `<div class="game-row" onclick="openGameDetail(${g.id}, '${dateStr}')">
+        <div class="game-rank">${medals[g.rank-1] || '#' + g.rank}</div>
+        <div class="game-info">
+          <div class="game-score">${g.score} очков</div>
+          <div class="game-detail">${dateStr} · ${g.question_count} вопр. · ${g.player_count} игр.</div>
+        </div>
+        <div class="game-correct">${g.correct}✓</div>
+      </div>`;
+    }).join('');
+  } catch {
+    document.getElementById('gameHistory').innerHTML = '<div style="color:var(--muted);">Ошибка загрузки</div>';
+  }
+}
+
+async function openGameDetail(gameId, dateStr) {
+  document.getElementById('modalTitle').textContent = 'Игра ' + dateStr;
+  document.getElementById('modalBody').innerHTML    = '<div style="color:var(--muted);">Загрузка...</div>';
+  document.getElementById('modalOverlay').classList.add('open');
+  try {
+    const res = await fetch(`/api/game-history?userId=${myUserId}&gameId=${gameId}`);
+    const { answers } = await res.json();
+    if (!answers.length) { document.getElementById('modalBody').innerHTML = '<div style="color:var(--muted);">Нет данных</div>'; return; }
+    document.getElementById('modalBody').innerHTML = answers.map(a => `
+      <div class="ah-row ${a.correct ? 'correct' : 'wrong'}">
+        <span class="ah-icon">${a.correct ? '✅' : '❌'}</span>
+        <div class="ah-q">
+          ${a.question_text}
+          <small>${a.author}${a.work ? ' · ' + a.work : ''} · ${a.elapsed ? a.elapsed + ' сек' : 'нет ответа'}</small>
+        </div>
+        <span class="ah-pts">${a.points > 0 ? '+' + a.points : '0'}</span>
+      </div>
+    `).join('');
+  } catch {
+    document.getElementById('modalBody').innerHTML = '<div style="color:var(--muted);">Ошибка</div>';
+  }
+}
+
+function closeModal(e) { if (e.target === document.getElementById('modalOverlay')) closeModalDirect(); }
+function closeModalDirect() { document.getElementById('modalOverlay').classList.remove('open'); }
+</script>
+</body>
+</html>

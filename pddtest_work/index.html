@@ -1,0 +1,1334 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ПДД РК — Найди лишнее</title>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;700;900&family=Mulish:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --sky:    #00AEEF;
+  --sky-dk: #0090c8;
+  --sky-lt: #e0f6ff;
+  --gold:   #F0C040;
+  --gold-dk:#c89a10;
+  --gold-lt:#fdf6dc;
+  --ink:    #0a1628;
+  --ink2:   #1a2d4a;
+  --off:    #f5f8fc;
+  --border: #d4e0ee;
+  --text:   #0f1e35;
+  --muted:  #5e7a99;
+  --white:  #ffffff;
+  --radius: 14px;
+  --shadow: 0 4px 20px rgba(0,100,170,0.10);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Mulish', sans-serif;
+  background: var(--off);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* ── HEADER ── */
+header {
+  width: 100%;
+  background: var(--ink);
+  padding: 0 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 62px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.30);
+}
+.logo {
+  font-family: 'Unbounded', sans-serif;
+  font-size: .85rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.01em;
+}
+.logo span { color: var(--gold); }
+.hdr-right { display: flex; align-items: center; gap: 10px; }
+.hdr-score { font-family:'Unbounded',sans-serif; font-size:.8rem; color:rgba(255,255,255,0.55); display:none; }
+.hdr-score span { color:var(--gold); font-weight:700; }
+
+/* Language switcher */
+.lang-btn {
+  font-family:'Unbounded',sans-serif; font-size:11px; font-weight:700;
+  padding: 5px 14px;
+  background: transparent;
+  border: 1.5px solid rgba(255,255,255,0.22);
+  border-radius: 8px; cursor: pointer;
+  display: flex; align-items: center; gap: 6px;
+  transition: all 0.2s;
+  letter-spacing: .04em;
+}
+.lang-btn .lang-ru { color: #fff; }
+.lang-btn .lang-kz { color: var(--gold); }
+.lang-btn:hover { background:rgba(255,255,255,0.1); border-color:rgba(255,255,255,0.45); }
+
+#btn-stop {
+  display: none;
+  font-size: 11px; font-weight: 700; font-family:'Unbounded',sans-serif;
+  padding: 5px 13px;
+  background: transparent;
+  color: rgba(255,255,255,0.65);
+  border: 1.5px solid rgba(255,255,255,0.18);
+  border-radius: 8px; cursor: pointer; transition: all 0.2s;
+  letter-spacing:.03em;
+}
+#btn-stop:hover { background:rgba(255,255,255,0.1); border-color:rgba(255,255,255,0.45); color:#fff; }
+
+main { width:100%; max-width:880px; padding:2rem 1.25rem 4rem; flex:1; }
+.screen { display:none; animation: fadeUp .35s ease; }
+.screen.active { display:block; }
+@keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+
+/* ── HOME ── */
+.home-hero {
+  background: var(--ink);
+  border-radius: var(--radius);
+  padding: 2.75rem 2.5rem;
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 1.75rem;
+}
+.home-hero::before {
+  content:'';
+  position:absolute; top:0; right:0;
+  width:280px; height:280px;
+  background: radial-gradient(circle at 75% 25%, rgba(0,174,239,0.15) 0%, transparent 65%);
+  pointer-events:none;
+}
+.home-hero::after {
+  content:'';
+  position:absolute; bottom:-40px; right:50px;
+  width:130px; height:130px;
+  border:2px solid rgba(240,192,64,0.12);
+  border-radius:50%;
+  pointer-events:none;
+}
+.hero-tag {
+  display:inline-flex; align-items:center; gap:6px;
+  background:rgba(240,192,64,0.12);
+  border: 1px solid rgba(240,192,64,0.3);
+  color:var(--gold);
+  font-family:'Unbounded',sans-serif; font-size:10px; font-weight:600;
+  letter-spacing:.1em; text-transform:uppercase;
+  padding:5px 12px; border-radius:100px; margin-bottom:1.1rem;
+}
+.hero-title {
+  font-family:'Unbounded',sans-serif;
+  font-size:clamp(1.6rem,4.5vw,2.7rem);
+  font-weight:900; line-height:1.1; margin-bottom:.75rem;
+  letter-spacing:-.02em;
+}
+.hero-title em { color:var(--sky); font-style:normal; }
+.hero-sub {
+  color:rgba(255,255,255,0.55); font-size:14px; line-height:1.7;
+  max-width:480px; margin-bottom:2.25rem;
+}
+.hero-stats { display:flex; gap:2.5rem; flex-wrap:wrap; }
+.hs-val { font-family:'Unbounded',sans-serif; font-size:2rem; font-weight:700; color:var(--gold); line-height:1; }
+.hs-key { font-size:11px; color:rgba(255,255,255,0.38); margin-top:4px; letter-spacing:.04em; }
+
+.home-btns { display:flex; flex-direction:column; gap:.75rem; max-width:310px; margin-bottom:2.5rem; }
+.btn-primary {
+  font-family:'Unbounded',sans-serif; font-size:13px; font-weight:700; letter-spacing:.02em;
+  padding:1rem 2rem; background:var(--gold); color:var(--ink);
+  border:none; border-radius:var(--radius); cursor:pointer; text-align:center;
+  transition:background .18s,transform .15s,box-shadow .18s;
+  box-shadow:0 4px 16px rgba(240,192,64,0.35);
+}
+.btn-primary:hover { background:#f5cc55; transform:translateY(-2px); box-shadow:0 6px 22px rgba(240,192,64,0.45); }
+.btn-outline {
+  font-family:'Mulish',sans-serif; font-size:14px; font-weight:700;
+  padding:.85rem 2rem; background:#fff; color:var(--ink2);
+  border:1.5px solid var(--border); border-radius:var(--radius);
+  cursor:pointer; text-align:center; transition:border-color .18s, box-shadow .18s;
+}
+.btn-outline:hover { border-color:var(--sky); box-shadow:0 2px 10px rgba(0,174,239,0.12); }
+
+.sec-label {
+  font-family:'Unbounded',sans-serif; font-size:11px; font-weight:600;
+  letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin-bottom:.85rem;
+}
+.rec-mini {
+  display:flex; align-items:center; padding:.75rem 1.1rem;
+  background:#fff; border:1px solid var(--border); border-radius:10px;
+  margin-bottom:.4rem; gap:12px;
+  transition: box-shadow .15s;
+}
+.rec-mini:hover { box-shadow: var(--shadow); }
+.rec-mini-rank { font-family:'Unbounded',sans-serif; font-size:12px; font-weight:700; color:var(--muted); min-width:22px; }
+.rec-mini-rank.g { color:var(--gold-dk); }
+.rec-mini-name { flex:1; font-size:14px; font-weight:600; }
+.rec-mini-score { font-family:'Unbounded',sans-serif; font-weight:700; font-size:14px; color:var(--sky-dk); }
+.rec-mini-date { font-size:11px; color:var(--muted); }
+.no-recs { text-align:center; color:var(--muted); font-size:14px; padding:1.5rem; }
+
+/* ── QUIZ ── */
+.quiz-top {
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom:.85rem; flex-wrap:wrap; gap:8px;
+}
+.round-badge {
+  font-family:'Unbounded',sans-serif; font-size:12px; font-weight:600;
+  color:var(--sky-dk); background:var(--sky-lt); padding:5px 14px; border-radius:100px;
+  border: 1px solid rgba(0,174,239,0.2);
+}
+.score-badge { font-family:'Unbounded',sans-serif; font-size:14px; font-weight:700; color:var(--gold-dk); }
+.prog-track {
+  width:100%; height:5px; background:var(--border); border-radius:6px;
+  margin-bottom:1.75rem; overflow:hidden;
+}
+.prog-fill { height:100%; background: linear-gradient(90deg, var(--sky), var(--gold)); border-radius:6px; transition:width .4s ease; }
+.timer-wrap { display:flex; justify-content:center; margin-bottom:1.75rem; }
+.t-ring { position:relative; width:78px; height:78px; }
+.t-ring svg { transform:rotate(-90deg); }
+.t-ring .bg { fill:none; stroke:var(--border); stroke-width:5; }
+.t-ring .prog {
+  fill:none; stroke:var(--sky); stroke-width:5; stroke-linecap:round;
+  stroke-dasharray:207; stroke-dashoffset:0;
+  transition:stroke-dashoffset 1s linear, stroke .3s;
+}
+.t-num {
+  position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  font-family:'Unbounded',sans-serif; font-size:1.4rem; font-weight:700; color:var(--ink);
+}
+.q-text {
+  text-align:center; font-size:14.5px; color:var(--muted); line-height:1.7;
+  max-width:560px; margin:0 auto 1.75rem; font-weight:600;
+}
+.signs-grid {
+  display:grid; grid-template-columns:repeat(2,1fr); gap:.875rem;
+  max-width:620px; margin:0 auto 1.5rem;
+}
+@media(min-width:520px) { .signs-grid { grid-template-columns:repeat(4,1fr); } }
+.sign-card {
+  background:#fff; border:2px solid var(--border); border-radius:var(--radius);
+  padding:1.1rem .5rem .875rem; text-align:center; cursor:pointer;
+  transition:border-color .15s, transform .15s, box-shadow .15s;
+  display:flex; flex-direction:column; align-items:center; gap:8px;
+  user-select:none; box-shadow:var(--shadow);
+}
+.sign-card:hover { border-color:var(--sky); transform:translateY(-3px); box-shadow:0 8px 24px rgba(0,174,239,0.16); }
+.sign-card.disabled { pointer-events:none; }
+.sign-card.sel-ok  { border-color:#12a150; background:#e8f8ef; }
+.sign-card.sel-err { border-color:#e53935; background:#ffeaea; animation:shake .4s; }
+.sign-card.rev-ok  { border-color:#12a150; background:#e8f8ef; }
+.sign-card.rev-dim { opacity:.35; }
+@keyframes shake {
+  0%,100%{transform:translateX(0)}20%{transform:translateX(-7px)}40%{transform:translateX(7px)}
+  60%{transform:translateX(-5px)}80%{transform:translateX(5px)}
+}
+.sign-img { width:78px; height:78px; object-fit:contain; }
+.sign-err {
+  width:78px; height:78px; display:none; align-items:center; justify-content:center;
+  background:var(--off); border:1px dashed var(--border); border-radius:6px;
+  font-size:10px; color:var(--muted); text-align:center; line-height:1.4;
+}
+.sign-code { font-family:'Unbounded',sans-serif; font-size:11px; color:var(--sky-dk); font-weight:700; }
+.sign-name { font-size:11px; color:var(--muted); line-height:1.4; font-weight:600; }
+.feedback {
+  max-width:620px; margin:0 auto 1rem; padding:.95rem 1.2rem;
+  border-radius:var(--radius); font-size:14px; line-height:1.65; font-weight:600;
+  display:none; border-left:4px solid transparent;
+}
+.feedback.show { display:block; animation:fadeUp .2s; }
+.feedback.ok  { background:#e8f8ef; border-color:#12a150; color:#0a6630; }
+.feedback.err { background:#ffeaea; border-color:#e53935; color:#8b0000; }
+.feedback.tim { background:#fff8e1; border-color:var(--gold-dk); color:#6d4c00; }
+.btn-next-wrap { text-align:center; }
+.btn-next {
+  display:none; font-family:'Unbounded',sans-serif; font-size:13px; font-weight:700;
+  letter-spacing:.02em; padding:.85rem 2.25rem; background:var(--ink); color:#fff;
+  border:none; border-radius:var(--radius); cursor:pointer;
+  transition:background .18s, transform .15s;
+  box-shadow:0 4px 16px rgba(10,22,40,0.25);
+}
+.btn-next.show { display:block; animation:fadeUp .2s; }
+.btn-next:hover { background:var(--ink2); transform:translateY(-1px); }
+
+/* ── RESULTS ── */
+.res-hero {
+  background: var(--ink);
+  border-radius: var(--radius); padding:2.75rem 2rem;
+  color:#fff; text-align:center; margin-bottom:1.5rem;
+  position:relative; overflow:hidden;
+}
+.res-hero::before {
+  content:''; position:absolute; top:-20px; right:-10px;
+  width:180px; height:180px;
+  border-radius:50%;
+  background: radial-gradient(circle, rgba(240,192,64,0.08) 0%, transparent 70%);
+  pointer-events:none;
+}
+.res-verdict { font-family:'Unbounded',sans-serif; font-size:1.4rem; font-weight:800; margin-bottom:.4rem; letter-spacing:-.02em; }
+.res-hint    { color:rgba(255,255,255,0.5); font-size:13px; margin-bottom:1.75rem; }
+.res-pts     { font-family:'Unbounded',sans-serif; font-size:3.5rem; font-weight:900; line-height:1; color:var(--gold); }
+.res-pts-lbl { font-size:11px; color:rgba(255,255,255,0.38); margin-top:6px; letter-spacing:.1em; text-transform:uppercase; }
+.res-grid {
+  display:grid; grid-template-columns:repeat(3,1fr); gap:.875rem; margin-bottom:1.5rem;
+}
+.res-card {
+  background:#fff; border:1px solid var(--border); border-radius:var(--radius);
+  padding:1.1rem; text-align:center; box-shadow:var(--shadow);
+}
+.res-val { font-family:'Unbounded',sans-serif; font-size:1.75rem; font-weight:800; line-height:1; margin-bottom:5px; }
+.res-val.g { color:#12a150; }
+.res-val.r { color:#e53935; }
+.res-val.b { color:var(--sky-dk); }
+.res-key { font-size:11px; color:var(--muted); font-weight:700; letter-spacing:.04em; text-transform:uppercase; }
+.save-block {
+  background:#fff; border:1px solid var(--border); border-radius:var(--radius);
+  padding:1.35rem; margin-bottom:1.5rem; box-shadow:var(--shadow);
+}
+.save-block label { display:block; font-size:12px; color:var(--muted); margin-bottom:8px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; }
+.save-row { display:flex; gap:8px; }
+.save-input {
+  flex:1; font-family:'Mulish',sans-serif; font-size:14px; font-weight:600;
+  padding:.75rem 1rem; border:1.5px solid var(--border); border-radius:10px;
+  outline:none; color:var(--text); background:var(--off); transition:border-color .2s;
+}
+.save-input:focus { border-color:var(--sky); background:#fff; }
+.save-input::placeholder { color:#b0c0d4; }
+.btn-save {
+  font-family:'Unbounded',sans-serif; font-size:12px; font-weight:700;
+  padding:.75rem 1.25rem; background:var(--sky); color:#fff;
+  border:none; border-radius:10px; cursor:pointer; transition:background .18s; white-space:nowrap;
+  letter-spacing:.02em;
+}
+.btn-save:hover { background:var(--sky-dk); }
+.save-ok { font-size:13px; color:#12a150; margin-top:8px; font-weight:700; display:none; }
+.save-ok.show { display:block; }
+.res-btns { display:flex; flex-direction:column; gap:.75rem; max-width:300px; }
+
+/* ── LEADERBOARD ── */
+.lb-wrap { max-width:700px; }
+.lb-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:1.5rem; }
+.page-title { font-family:'Unbounded',sans-serif; font-size:1.25rem; font-weight:800; color:var(--ink); letter-spacing:-.02em; }
+.btn-clear { font-size:13px; color:var(--muted); background:none; border:none; cursor:pointer; font-family:'Mulish',sans-serif; font-weight:700; }
+.btn-clear:hover { color:#e53935; }
+table.lb {
+  width:100%; border-collapse:collapse;
+  background:#fff; border-radius:var(--radius); overflow:hidden; box-shadow:var(--shadow);
+}
+table.lb thead tr { background:var(--ink); color:rgba(255,255,255,0.5); }
+table.lb th {
+  padding:.8rem 1rem; text-align:left;
+  font-family:'Unbounded',sans-serif; font-size:10px; font-weight:600;
+  letter-spacing:.08em; text-transform:uppercase;
+}
+table.lb td { padding:.85rem 1rem; font-size:14px; border-bottom:1px solid var(--border); font-weight:600; }
+table.lb tbody tr:last-child td { border-bottom:none; }
+table.lb tbody tr:hover { background:var(--sky-lt); }
+.rk {
+  display:inline-flex; width:26px; height:26px; border-radius:50%;
+  align-items:center; justify-content:center;
+  font-family:'Unbounded',sans-serif; font-size:11px; font-weight:700;
+  background:var(--off); color:var(--muted);
+}
+.rk.r1 { background:rgba(240,192,64,0.2); color:var(--gold-dk); }
+.rk.r2 { background:rgba(200,210,225,0.4); color:#5e7a99; }
+.rk.r3 { background:rgba(180,140,100,0.15); color:#8b6030; }
+.pct-row { display:flex; align-items:center; gap:8px; }
+.pct-bar { height:5px; background: linear-gradient(90deg, var(--sky), var(--gold)); border-radius:4px; min-width:4px; }
+.pct-num { font-family:'Unbounded',sans-serif; font-size:12px; font-weight:700; color:var(--sky-dk); min-width:38px; }
+.empty-lb { text-align:center; padding:3rem; color:var(--muted); font-size:15px; font-weight:600; }
+.divider {
+  height:3px; max-width:80px;
+  background: linear-gradient(90deg, var(--sky) 50%, var(--gold) 50%);
+  border-radius:2px; margin:1.75rem 0;
+}
+footer {
+  width:100%; background:var(--ink); text-align:center;
+  padding:1rem; font-size:12px; color:rgba(255,255,255,0.28); font-weight:600;
+}
+footer code { color:rgba(255,255,255,0.5); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo" id="logo-text">ПДД <span>РК</span> — Найди лишнее</div>
+  <div class="hdr-right">
+    <div class="hdr-score" id="hdr-score">
+      <span id="hdr-score-label">Счёт:</span> <span id="hdr-pts">0</span>
+    </div>
+    <button id="btn-stop" onclick="stopEarly()">Завершить</button>
+    <button class="lang-btn" onclick="toggleLang()">
+      <span class="lang-ru" id="lang-ru-lbl">RU</span>
+      <span style="color:rgba(255,255,255,0.3)">|</span>
+      <span class="lang-kz" id="lang-kz-lbl">ҚЗ</span>
+    </button>
+  </div>
+</header>
+
+<main>
+
+  <!-- HOME -->
+  <div class="screen active" id="screen-home">
+    <div class="home-hero">
+      <div class="hero-tag" id="hero-tag-text">Тест ПДД РК</div>
+      <h1 class="hero-title" id="hero-title-text">Найди <em>лишний</em> знак</h1>
+      <p class="hero-sub" id="hero-sub-text">В каждом раунде — 4 знака. Три из одной подкатегории, один — лишний. Вопросы сложные: знаки похожи визуально. 30 секунд на ответ. Можно завершить тест досрочно — результат будет засчитан.</p>
+      <div class="hero-stats">
+        <div><div class="hs-val">30</div><div class="hs-key" id="hs-rounds">раундов</div></div>
+        <div><div class="hs-val">30</div><div class="hs-key" id="hs-secs">секунд</div></div>
+        <div><div class="hs-val" id="home-played">0</div><div class="hs-key" id="hs-tries">попыток</div></div>
+      </div>
+    </div>
+    <div class="home-btns">
+      <button class="btn-primary" id="btn-start" onclick="startGame()">Начать тест</button>
+      <button class="btn-outline" id="btn-lb" onclick="showScreen('screen-lb')">Таблица рекордов</button>
+    </div>
+    <div class="sec-label" id="lbl-recent">Последние результаты</div>
+    <div id="home-recs"></div>
+  </div>
+
+  <!-- QUIZ -->
+  <div class="screen" id="screen-quiz">
+    <div class="quiz-top">
+      <div class="round-badge"><span id="lbl-round-word">Раунд</span> <span id="q-num">1</span> / <span id="q-tot">30</span></div>
+      <div class="score-badge"><span id="q-score">0</span> <span id="lbl-pts-short">pts</span></div>
+    </div>
+    <div class="prog-track"><div class="prog-fill" id="q-prog" style="width:0%"></div></div>
+    <div class="timer-wrap">
+      <div class="t-ring">
+        <svg width="78" height="78" viewBox="0 0 78 78">
+          <circle class="bg" cx="39" cy="39" r="33"/>
+          <circle class="prog" id="t-circle" cx="39" cy="39" r="33"/>
+        </svg>
+        <div class="t-num" id="t-num">30</div>
+      </div>
+    </div>
+    <p class="q-text" id="q-text"></p>
+    <div class="signs-grid" id="signs-grid"></div>
+    <div class="feedback" id="feedback"></div>
+    <div class="btn-next-wrap">
+      <button class="btn-next" id="btn-next" onclick="nextRound()">Следующий раунд</button>
+    </div>
+  </div>
+
+  <!-- RESULTS -->
+  <div class="screen" id="screen-results">
+    <div class="res-hero">
+      <div class="res-verdict" id="res-verdict"></div>
+      <div class="res-hint" id="res-hint"></div>
+      <div class="res-pts" id="res-pts">0</div>
+      <div class="res-pts-lbl" id="lbl-pts-res">очков</div>
+    </div>
+    <div class="res-grid">
+      <div class="res-card"><div class="res-val g" id="res-correct">0</div><div class="res-key" id="lbl-correct">Верно</div></div>
+      <div class="res-card"><div class="res-val r" id="res-wrong">0</div><div class="res-key" id="lbl-wrong">Ошибок</div></div>
+      <div class="res-card"><div class="res-val b" id="res-pct">0%</div><div class="res-key" id="lbl-acc">Точность</div></div>
+    </div>
+    <div class="save-block">
+      <label id="lbl-save">Сохранить в таблицу рекордов:</label>
+      <div class="save-row">
+        <input class="save-input" id="save-name" type="text" maxlength="24" placeholder="Ваше имя...">
+        <button class="btn-save" id="btn-save-rec" onclick="saveRecord()">Сохранить</button>
+      </div>
+      <div class="save-ok" id="save-ok">✓ Результат сохранён!</div>
+    </div>
+    <div class="res-btns">
+      <button class="btn-primary" id="btn-play-again" onclick="startGame()">Играть снова</button>
+      <button class="btn-outline" id="btn-lb2" onclick="showScreen('screen-lb')">Таблица рекордов</button>
+      <button class="btn-outline" id="btn-home2" onclick="showScreen('screen-home')">На главную</button>
+    </div>
+  </div>
+
+  <!-- LEADERBOARD -->
+  <div class="screen" id="screen-lb">
+    <div class="lb-wrap">
+      <div class="lb-header">
+        <div class="page-title" id="lbl-lb-title">Таблица рекордов</div>
+        <button class="btn-clear" id="btn-clear" onclick="clearRecs()">Очистить</button>
+      </div>
+      <div id="lb-body"></div>
+      <div class="divider"></div>
+      <button class="btn-outline" style="max-width:200px" id="btn-home3" onclick="showScreen('screen-home')">На главную</button>
+    </div>
+  </div>
+
+</main>
+<footer>Знаки из папки <code>signs/</code> &nbsp;·&nbsp; GitHub Pages &nbsp;·&nbsp; ПДД РК</footer>
+
+<script>
+// ══════════════════════════════════════════════════════════════════
+// ПЕРЕВОДЫ
+// ══════════════════════════════════════════════════════════════════
+const T = {
+  ru: {
+    logo: 'ПДД <span style="color:var(--gold)">РК</span> — Найди лишнее',
+    heroTag: 'Тест ПДД РК',
+    heroTitle: 'Найди <em style="color:var(--sky);font-style:normal">лишний</em> знак',
+    heroSub: 'В каждом раунде — 4 знака. Три из одной подкатегории, один — лишний. Вопросы сложные: знаки похожи визуально. 30 секунд на ответ. Можно завершить тест досрочно — результат будет засчитан.',
+    hsRounds: 'раундов', hsSecs: 'секунд', hsTries: 'попыток',
+    btnStart: 'Начать тест', btnLb: 'Таблица рекордов',
+    lblRecent: 'Последние результаты',
+    lblRoundWord: 'Раунд', lblPtsShort: 'pts',
+    btnStop: 'Завершить',
+    scoreLabel: 'Счёт:',
+    lblPtsRes: 'очков',
+    lblCorrect: 'Верно', lblWrong: 'Ошибок', lblAcc: 'Точность',
+    lblSave: 'Сохранить в таблицу рекордов:',
+    savePlaceholder: 'Ваше имя...',
+    btnSaveRec: 'Сохранить',
+    saveOk: '✓ Результат сохранён!',
+    btnPlayAgain: 'Играть снова', btnHome: 'На главную',
+    lbTitle: 'Таблица рекордов', btnClear: 'Очистить',
+    lbEmpty: 'Рекордов пока нет. Пройдите тест первым!',
+    noRecs: 'Рекордов пока нет',
+    lbCols: ['#','Имя','Счёт','Верно / пройдено','Точность','Дата'],
+    btnNextRound: 'Следующий раунд', btnResults: 'Результаты',
+    verdict100: 'Отличный результат!', hint100: 'Все знаки классифицированы верно',
+    verdict70: 'Хорошо!', hint70: 'Есть что повторить, но в целом уверенно',
+    verdictLow: 'Нужно повторить', hintLow: 'Изучите классификацию знаков и попробуйте снова',
+    verdictEarly: 'Тест завершён досрочно', hintEarly: (p,t) => `Пройдено ${p} из ${t} раундов`,
+    fbOk: (exp) => '✓ Верно! ' + exp,
+    fbErr: (exp) => '✗ Ошибка. ' + exp,
+    fbTim: (exp) => '⏱ Время вышло! ' + exp,
+    confirmStop: (p,t) => `Завершить тест?\nПройдено ${p} из ${t} раундов. Результат будет засчитан.`,
+    confirmClear: 'Очистить все рекорды?',
+  },
+  kz: {
+    logo: 'ПДҚ <span style="color:var(--gold)">РК</span> — Артығын тап',
+    heroTag: 'ПДҚ тесті',
+    heroTitle: 'Артық <em style="color:var(--sky);font-style:normal">белгіні</em> тап',
+    heroSub: 'Əр раундта — 4 белгі. Үші бір санатта, біреуі — артық. Сұрақтар күрделі: белгілер визуалды ұқсас. Жауапқа 30 секунд. Тестті ерте аяқтауға болады — нəтиже есептеледі.',
+    hsRounds: 'раунд', hsSecs: 'секунд', hsTries: 'əрекет',
+    btnStart: 'Тестті бастау', btnLb: 'Рекордтар кестесі',
+    lblRecent: 'Соңғы нəтижелер',
+    lblRoundWord: 'Раунд', lblPtsShort: 'ұпай',
+    btnStop: 'Аяқтау',
+    scoreLabel: 'Ұпай:',
+    lblPtsRes: 'ұпай',
+    lblCorrect: 'Дұрыс', lblWrong: 'Қате', lblAcc: 'Дəлдік',
+    lblSave: 'Рекордтар кестесіне сақтау:',
+    savePlaceholder: 'Атыңызды енгізіңіз...',
+    btnSaveRec: 'Сақтау',
+    saveOk: '✓ Нəтиже сақталды!',
+    btnPlayAgain: 'Қайта ойнау', btnHome: 'Басты бет',
+    lbTitle: 'Рекордтар кестесі', btnClear: 'Тазалау',
+    lbEmpty: 'Əлі рекорд жоқ. Бірінші болыңыз!',
+    noRecs: 'Əлі рекорд жоқ',
+    lbCols: ['#','Аты','Ұпай','Дұрыс / өтілді','Дəлдік','Күні'],
+    btnNextRound: 'Келесі раунд →', btnResults: 'Нəтижелер',
+    verdict100: 'Тамаша нəтиже!', hint100: 'Барлық белгілер дұрыс жіктелді',
+    verdict70: 'Жақсы!', hint70: 'Қайталауға тұрарлық бар, бірақ жалпы сенімді',
+    verdictLow: 'Қайталау керек', hintLow: 'Белгілер жіктемесін оқып, қайта тырысыңыз',
+    verdictEarly: 'Тест ерте аяқталды', hintEarly: (p,t) => `${p} / ${t} раунд өтілді`,
+    fbOk: (exp) => '✓ Дұрыс! ' + exp,
+    fbErr: (exp) => '✗ Қате. ' + exp,
+    fbTim: (exp) => '⏱ Уақыт өтті! ' + exp,
+    confirmStop: (p,t) => `Тестті аяқтау?\n${p} / ${t} раунд өтілді. Нəтиже есептеледі.`,
+    confirmClear: 'Барлық рекордтарды тазалау?',
+  }
+};
+
+let lang = localStorage.getItem('pdd_lang') || 'ru';
+
+function t(key, ...args) {
+  const val = T[lang][key];
+  return typeof val === 'function' ? val(...args) : val;
+}
+
+function applyLang() {
+  const L = T[lang];
+  document.getElementById('logo-text').innerHTML = L.logo;
+  document.getElementById('hero-tag-text').textContent = L.heroTag;
+  document.getElementById('hero-title-text').innerHTML = L.heroTitle;
+  document.getElementById('hero-sub-text').textContent = L.heroSub;
+  document.getElementById('hs-rounds').textContent = L.hsRounds;
+  document.getElementById('hs-secs').textContent = L.hsSecs;
+  document.getElementById('hs-tries').textContent = L.hsTries;
+  document.getElementById('btn-start').textContent = L.btnStart;
+  document.getElementById('btn-lb').textContent = L.btnLb;
+  document.getElementById('lbl-recent').textContent = L.lblRecent;
+  document.getElementById('lbl-round-word').textContent = L.lblRoundWord;
+  document.getElementById('lbl-pts-short').textContent = L.lblPtsShort;
+  document.getElementById('btn-stop').textContent = L.btnStop;
+  document.getElementById('hdr-score-label').textContent = L.scoreLabel;
+  document.getElementById('lbl-pts-res').textContent = L.lblPtsRes;
+  document.getElementById('lbl-correct').textContent = L.lblCorrect;
+  document.getElementById('lbl-wrong').textContent = L.lblWrong;
+  document.getElementById('lbl-acc').textContent = L.lblAcc;
+  document.getElementById('lbl-save').textContent = L.lblSave;
+  document.getElementById('save-name').placeholder = L.savePlaceholder;
+  document.getElementById('btn-save-rec').textContent = L.btnSaveRec;
+  document.getElementById('save-ok').textContent = L.saveOk;
+  document.getElementById('btn-play-again').textContent = L.btnPlayAgain;
+  document.getElementById('btn-lb2').textContent = L.btnLb;
+  document.getElementById('btn-home2').textContent = L.btnHome;
+  document.getElementById('lbl-lb-title').textContent = L.lbTitle;
+  document.getElementById('btn-clear').textContent = L.btnClear;
+  document.getElementById('btn-home3').textContent = L.btnHome;
+  // active state on lang buttons
+  document.getElementById('lang-ru-lbl').style.opacity = lang === 'ru' ? '1' : '0.45';
+  document.getElementById('lang-kz-lbl').style.opacity = lang === 'kz' ? '1' : '0.45';
+  // update btn-next if visible
+  const btnNext = document.getElementById('btn-next');
+  if (btnNext.classList.contains('show')) {
+    btnNext.textContent = curRound < ROUNDS.length - 1 ? t('btnNextRound') : t('btnResults');
+  }
+  renderHomeRecs();
+}
+
+function toggleLang() {
+  lang = lang === 'ru' ? 'kz' : 'ru';
+  localStorage.setItem('pdd_lang', lang);
+  applyLang();
+}
+
+// ══════════════════════════════════════════════════════════════════
+// 30 СЛОЖНЫХ РАУНДОВ — нумерация по ПДД РК
+// Каждый раунд: знаки из одной группы, отличие тонкое
+// ══════════════════════════════════════════════════════════════════
+const ROUNDS = [
+  {
+    ru: {
+      q: "Три знака запрещают движение отдельных видов ТС, один — запрещает движение вообще всем. Найди лишнее!",
+      exp: "3.3 «Движение МТС запрещено» запрещает всем механическим ТС. Знаки 3.5, 3.6, 3.9 запрещают только мотоциклам, тракторам и велосипедам соответственно."
+    },
+    kz: {
+      q: "Үш белгі жекелеген КЖҚ түрлерінің қозғалысына тыйым салады, біреуі — барлығына. Артығын тап!",
+      exp: "3.3 «МКЖ қозғалысы тыйым» барлық механикалық КЖҚ-ға тыйым салады. 3.5, 3.6, 3.9 тек мотоцикл, трактор және велосипедке тыйым салады."
+    },
+    signs:[
+      {code:"3.5", name:{ru:"Движение мотоциклов запрещено",kz:"Мотоцикл жүруіне тыйым"},    img:"3.5.png"},
+      {code:"3.6", name:{ru:"Движение тракторов запрещено",kz:"Трактор жүруіне тыйым"},     img:"3.6.png"},
+      {code:"3.3", name:{ru:"Движение МТС запрещено",kz:"МКЖ қозғалысы тыйым"},            img:"3.3.png"},
+      {code:"3.9", name:{ru:"Движение на велосипедах запрещено",kz:"Велосипед жүруіне тыйым"},img:"3.9.png"},
+    ],
+    odd:"3.3"
+  },
+  {
+    ru: {
+      q: "Три знака — предупреждают об изменении геометрии дороги, один — о состоянии покрытия. Найди лишнее!",
+      exp: "1.15 «Скользкая дорога» — о покрытии. Знаки 1.11.1, 1.12.1, 1.13 предупреждают об изменении геометрии: поворотах и спуске."
+    },
+    kz: {
+      q: "Үш белгі жолдың геометриясы туралы ескертеді, біреуі — жол жабынының күйі туралы. Артығын тап!",
+      exp: "1.15 «Тайғақ жол» — жол жабыны туралы. 1.11.1, 1.12.1, 1.13 геометрия: бұрылыстар мен еңіс туралы ескертеді."
+    },
+    signs:[
+      {code:"1.11.1",name:{ru:"Опасный поворот направо",kz:"Оңға қауіпті бұрылыс"},         img:"1.11.png"},
+      {code:"1.12.1",name:{ru:"Опасные повороты",kz:"Қауіпті бұрылыстар"},                  img:"1.12.png"},
+      {code:"1.13",  name:{ru:"Крутой спуск",kz:"Тік түсу"},                                img:"1.13.png"},
+      {code:"1.15",  name:{ru:"Скользкая дорога",kz:"Тайғақ жол"},                          img:"1.15.png"},
+    ],
+    odd:"1.15"
+  },
+  {
+    ru: {
+      q: "Три знака — предписывающие для выбора направления движения, один — для скоростного режима. Найди лишнее!",
+      exp: "4.6 «Ограничение минимальной скорости» — регулирует скоростной режим. Знаки 4.1, 4.2, 4.3 предписывают направление движения."
+    },
+    kz: {
+      q: "Үш белгі қозғалыс бағытын белгілейді, біреуі — жылдамдық режимін. Артығын тап!",
+      exp: "4.6 «Ең аз жылдамдықты шектеу» — жылдамдық режимін реттейді. 4.1, 4.2, 4.3 — қозғалыс бағытын белгілейді."
+    },
+    signs:[
+      {code:"4.1", name:{ru:"Движение прямо",kz:"Тікелей қозғалыс"},                        img:"4.1.png"},
+      {code:"4.2", name:{ru:"Движение направо",kz:"Оңға қозғалыс"},                         img:"4.2.png"},
+      {code:"4.3", name:{ru:"Движение налево",kz:"Солға қозғалыс"},                         img:"4.3.png"},
+      {code:"4.6", name:{ru:"Мин. скорость 40",kz:"Ең аз жылдамдық 40"},                   img:"4.16.png"},
+    ],
+    odd:"4.6"
+  },
+  {
+    ru: {
+      q: "Три знака — знаки приоритета для регулирования очерёдности на перекрёстке, один — для узких мест. Найди лишнее!",
+      exp: "2.6 «Преимущество встречного движения» — для узких участков дороги. Знаки 2.1, 2.4, 2.5 регулируют очерёдность проезда перекрёстков."
+    },
+    kz: {
+      q: "Үш белгі қиылыста өту кезегін реттейді, біреуі — тар жерлерде. Артығын тап!",
+      exp: "2.6 «Қарсы қозғалысқа басымдылық» — тар жол учаскелері үшін. 2.1, 2.4, 2.5 — қиылысты өту кезегін реттейді."
+    },
+    signs:[
+      {code:"2.1", name:{ru:"Главная дорога",kz:"Басты жол"},                               img:"2.1.png"},
+      {code:"2.4", name:{ru:"Уступите дорогу",kz:"Жол беріңіз"},                            img:"2.4.png"},
+      {code:"2.5", name:{ru:"Движение без остановки запрещено",kz:"Тоқтаусыз жүруге тыйым"},img:"2.4.png"},
+      {code:"2.6", name:{ru:"Преимущество встречного движения",kz:"Қарсы қозғалысқа басымдылық"},img:"2.1.png"},
+    ],
+    odd:"2.6"
+  },
+  {
+    ru: {
+      q: "Три знака — запрещают остановку или стоянку в разных режимах, один — запрещает въезд. Найди лишнее!",
+      exp: "3.1 «Въезд запрещён» запрещает движение в данном направлении. Знаки 3.27, 3.28, 3.29 регулируют остановку и стоянку."
+    },
+    kz: {
+      q: "Үш белгі тоқтауға немесе тұрақтауға тыйым салады, біреуі — кіруге тыйым. Артығын тап!",
+      exp: "3.1 «Кіруге тыйым» осы бағытта қозғалысты тыйым салады. 3.27, 3.28, 3.29 тоқтауды реттейді."
+    },
+    signs:[
+      {code:"3.27",name:{ru:"Остановка запрещена",kz:"Тоқтауға тыйым"},                     img:"3.27.png"},
+      {code:"3.28",name:{ru:"Стоянка запрещена",kz:"Тұрақтауға тыйым"},                     img:"3.28.png"},
+      {code:"3.29",name:{ru:"Стоянка запрещена по нечётным числам",kz:"Тақ күндері тұрақтауға тыйым"},img:"3.28.png"},
+      {code:"3.1", name:{ru:"Въезд запрещён",kz:"Кіруге тыйым"},                            img:"3.1.png"},
+    ],
+    odd:"3.1"
+  },
+  {
+    ru: {
+      q: "Три знака — информационные о зонах с особым режимом движения, один — предписывающий. Найди лишнее!",
+      exp: "4.7 «Пешеходная дорожка» — предписывающий знак (синий круг, обязателен к исполнению). Знаки 5.27, 5.29, 5.31 — информационные, обозначают зоны."
+    },
+    kz: {
+      q: "Үш белгі ерекше режимді аймақтар туралы ақпараттық, біреуі — міндеттеуші. Артығын тап!",
+      exp: "4.7 «Жаяу жол» — міндеттеуші белгі (орындауға міндетті). 5.27, 5.29, 5.31 — аймақтарды белгілейтін ақпараттық белгілер."
+    },
+    signs:[
+      {code:"5.27",name:{ru:"Жилая зона",kz:"Тұрғын аймақ"},                                img:"5.27.png"},
+      {code:"5.29",name:{ru:"Пешеходная зона",kz:"Жаяу аймақ"},                             img:"5.29.png"},
+      {code:"5.31",name:{ru:"Велосипедная зона",kz:"Велосипед аймағы"},                     img:"5.33.png"},
+      {code:"4.7", name:{ru:"Пешеходная дорожка",kz:"Жаяу жол"},                            img:"4.7.png"},
+    ],
+    odd:"4.7"
+  },
+  {
+    ru: {
+      q: "Три знака — предупреждают о людях или животных на дороге, один — о пересечении с другой дорогой. Найди лишнее!",
+      exp: "1.22 «Пересечение с велосипедной дорожкой» — о пересечении с инфраструктурой. Знаки 1.20, 1.21, 1.24 предупреждают о людях и животных."
+    },
+    kz: {
+      q: "Үш белгі жолдағы адамдар мен жануарлар туралы ескертеді, біреуі — жол қиылысы туралы. Артығын тап!",
+      exp: "1.22 «Велосипед жолымен қиылысу» — инфрақұрылымымен қиылысу туралы. 1.20, 1.21, 1.24 адамдар мен жануарлар туралы ескертеді."
+    },
+    signs:[
+      {code:"1.20",name:{ru:"Пешеходный переход",kz:"Жаяу жүргіншілер өтімі"},              img:"1.22.png"},
+      {code:"1.21",name:{ru:"Дети",kz:"Балалар"},                                            img:"1.23.png"},
+      {code:"1.22",name:{ru:"Пересечение с велодорожкой",kz:"Велосипед жолымен қиылысу"},   img:"1.24.png"},
+      {code:"1.24",name:{ru:"Перегон скота",kz:"Мал айдау"},                                img:"1.26.png"},
+    ],
+    odd:"1.22"
+  },
+  {
+    ru: {
+      q: "Три знака — запрещают движение по габаритам (масса, высота, ширина), один — запрещает конкретный манёвр. Найди лишнее!",
+      exp: "3.18.1 «Поворот налево запрещён» — запрещает манёвр. Знаки 3.11, 3.12, 3.13 ограничивают проезд по физическим параметрам ТС."
+    },
+    kz: {
+      q: "Үш белгі габариттері бойынша қозғалысты шектейді, біреуі — нақты маневрге тыйым. Артығын тап!",
+      exp: "3.18.1 «Солға бұрылуға тыйым» — маневрге тыйым. 3.11, 3.12, 3.13 — КЖҚ физикалық параметрлері бойынша шектейді."
+    },
+    signs:[
+      {code:"3.11", name:{ru:"Ограничение массы",kz:"Салмақ шектеуі"},                      img:"3.11.png"},
+      {code:"3.12", name:{ru:"Ограничение нагрузки на ось",kz:"Осьтік жүктемені шектеу"},  img:"3.12.png"},
+      {code:"3.13", name:{ru:"Ограничение высоты",kz:"Биіктік шектеуі"},                    img:"3.13.png"},
+      {code:"3.18.1",name:{ru:"Поворот налево запрещён",kz:"Солға бұрылуға тыйым"},         img:"3.18.png"},
+    ],
+    odd:"3.18.1"
+  },
+  {
+    ru: {
+      q: "Три знака — предупреждают о рельефе дороги (спуск/подъём), один — о сужении проезжей части. Найди лишнее!",
+      exp: "1.18.1 «Сужение дороги» — об изменении ширины проезжей части. Знаки 1.13, 1.14, 1.16 предупреждают о крутом рельефе."
+    },
+    kz: {
+      q: "Үш белгі жолдың рельефі туралы ескертеді, біреуі — жолдың тарылуы туралы. Артығын тап!",
+      exp: "1.18.1 «Жолдың тарылуы» — өтпе ені туралы. 1.13, 1.14, 1.16 — тік рельеф туралы ескертеді."
+    },
+    signs:[
+      {code:"1.13", name:{ru:"Крутой спуск",kz:"Тік түсу"},                                 img:"1.13.png"},
+      {code:"1.14", name:{ru:"Крутой подъём",kz:"Тік көтеріліс"},                           img:"1.14.png"},
+      {code:"1.16", name:{ru:"Неровная дорога (волнистость)",kz:"Толқынды жол"},            img:"1.16.png"},
+      {code:"1.18.1",name:{ru:"Сужение дороги",kz:"Жолдың тарылуы"},                        img:"1.20.png"},
+    ],
+    odd:"1.18.1"
+  },
+  {
+    ru: {
+      q: "Три знака — информационные о парковке и стоянке (разрешённой), один — запрещает стоянку. Найди лишнее!",
+      exp: "3.28 «Стоянка запрещена» — запрещающий знак. Знаки 6.4, 6.5, 6.6 — информационные о местах разрешённой стоянки."
+    },
+    kz: {
+      q: "Үш белгі рұқсат етілген тұрақ туралы ақпараттық, біреуі — тұрақтауға тыйым. Артығын тап!",
+      exp: "3.28 «Тұрақтауға тыйым» — тыйым салушы. 6.4, 6.5, 6.6 — рұқсат етілген тұрақ туралы ақпараттық белгілер."
+    },
+    signs:[
+      {code:"6.4", name:{ru:"Место стоянки",kz:"Тұрақ орны"},                               img:"6.4.png"},
+      {code:"6.5", name:{ru:"Зона стоянки",kz:"Тұрақ аймағы"},                              img:"6.5.png"},
+      {code:"6.6", name:{ru:"Конец зоны стоянки",kz:"Тұрақ аймағының аяқталуы"},           img:"6.6.png"},
+      {code:"3.28",name:{ru:"Стоянка запрещена",kz:"Тұрақтауға тыйым"},                     img:"3.28.png"},
+    ],
+    odd:"3.28"
+  },
+  {
+    ru: {
+      q: "Три знака — запрещают обгон или устанавливают скоростное ограничение, один — отменяет ранее введённые ограничения. Найди лишнее!",
+      exp: "3.31 «Конец всех ограничений» — отменяет всё. Знаки 3.20, 3.24, 3.27 вводят новые ограничения."
+    },
+    kz: {
+      q: "Үш белгі қуып өтуге тыйым немесе жылдамдықты шектейді, біреуі — барлық шектеулерді жояды. Артығын тап!",
+      exp: "3.31 «Барлық шектеулердің аяқталуы» — барлығын жояды. 3.20, 3.24, 3.27 — жаңа шектеулер енгізеді."
+    },
+    signs:[
+      {code:"3.20",name:{ru:"Обгон запрещён",kz:"Қуып өтуге тыйым"},                        img:"3.20.png"},
+      {code:"3.24",name:{ru:"Ограничение скорости 40",kz:"Жылдамдықты шектеу 40"},          img:"3.24.png"},
+      {code:"3.27",name:{ru:"Остановка запрещена",kz:"Тоқтауға тыйым"},                     img:"3.27.png"},
+      {code:"3.31",name:{ru:"Конец всех ограничений",kz:"Барлық шектеулердің аяқталуы"},    img:"3.31.png"},
+    ],
+    odd:"3.31"
+  },
+  {
+    ru: {
+      q: "Три знака — предупреждают о пересечениях и разветвлениях дорог, один — о светофорном регулировании. Найди лишнее!",
+      exp: "1.8 «Светофорное регулирование» — об организации движения на участке. Знаки 1.6, 1.7, 2.3.1 предупреждают о пересечениях дорог."
+    },
+    kz: {
+      q: "Үш белгі жолдардың қиылысу мен тармақталуы туралы ескертеді, біреуі — светофорлы реттеу туралы. Артығын тап!",
+      exp: "1.8 «Светофорлы реттеу» — учаскедегі қозғалысты ұйымдастыру туралы. 1.6, 1.7, 2.3.1 — жолдар қиылысы туралы ескертеді."
+    },
+    signs:[
+      {code:"1.6",  name:{ru:"Пересечение равнозначных дорог",kz:"Тең жолдар қиылысы"},    img:"1.6.png"},
+      {code:"1.7",  name:{ru:"Пересечение с круговым движением",kz:"Айналма қозғалыс қиылысы"},img:"1.7.png"},
+      {code:"1.8",  name:{ru:"Светофорное регулирование",kz:"Светофорлы реттеу"},           img:"1.8.png"},
+      {code:"2.3.1",name:{ru:"Пересечение со второстепенной дорогой",kz:"Қосалқы жол қиылысы"},img:"2.3.1.png"},
+    ],
+    odd:"1.8"
+  },
+  {
+    ru: {
+      q: "Три знака — сервис для людей (медицина, питание, отдых), один — для транспортного средства. Найди лишнее!",
+      exp: "6.3 «Автозаправочная станция» — сервис для ТС. Знаки 6.1, 6.2, 6.6 — сервисные объекты для людей."
+    },
+    kz: {
+      q: "Үш белгі адамдарға арналған сервис (медицина, тамақ, демалыс), біреуі — КЖҚ үшін. Артығын тап!",
+      exp: "6.3 «Жанармай станциясы» — КЖҚ үшін сервис. 6.1, 6.2, 6.6 — адамдарға арналған сервис объектілері."
+    },
+    signs:[
+      {code:"6.1", name:{ru:"Пункт медицинской помощи",kz:"Медициналық көмек пункті"},      img:"7.1.png"},
+      {code:"6.2", name:{ru:"Место отдыха",kz:"Демалыс орны"},                              img:"6.2.png"},
+      {code:"6.3", name:{ru:"АЗС",kz:"АЖС"},                                                img:"7.4.png"},
+      {code:"6.6", name:{ru:"Телефон",kz:"Телефон"},                                        img:"6.11.png"},
+    ],
+    odd:"6.3"
+  },
+  {
+    ru: {
+      q: "Три знака — предписывают специальные полосы для отдельных участников движения, один — общее направление. Найди лишнее!",
+      exp: "4.1 «Движение прямо» — общее предписание для всего потока. Знаки 4.5, 4.6, 4.7 — предписывают специальные полосы/дорожки."
+    },
+    kz: {
+      q: "Үш белгі жекелеген қатысушыларға арнайы жолақтарды белгілейді, біреуі — жалпы бағыт. Артығын тап!",
+      exp: "4.1 «Тікелей қозғалыс» — бүкіл ағынға жалпы міндеттеу. 4.5, 4.6, 4.7 — арнайы жолдар мен жолақтарды белгілейді."
+    },
+    signs:[
+      {code:"4.5", name:{ru:"Пешеходная дорожка",kz:"Жаяу жол"},                            img:"4.5.png"},
+      {code:"4.6", name:{ru:"Велосипедная дорожка",kz:"Велосипед жолы"},                    img:"4.6.png"},
+      {code:"4.7", name:{ru:"Пешеходная и велосипедная дорожка",kz:"Жаяу жəне велосипед жолы"},img:"4.8.png"},
+      {code:"4.1", name:{ru:"Движение прямо",kz:"Тікелей қозғалыс"},                        img:"4.1.png"},
+    ],
+    odd:"4.1"
+  },
+  {
+    ru: {
+      q: "Три знака — предупреждают о железнодорожных переездах, один — о трамвайной линии. Найди лишнее!",
+      exp: "1.5 «Пересечение с трамвайной линией» — о трамвае. Знаки 1.1, 1.2, 1.3 предупреждают о железнодорожных переездах."
+    },
+    kz: {
+      q: "Үш белгі теміржол өтімдері туралы ескертеді, біреуі — трамвай желісі туралы. Артығын тап!",
+      exp: "1.5 «Трамвай желісімен қиылысу» — трамвай туралы. 1.1, 1.2, 1.3 — теміржол өтімдері туралы ескертеді."
+    },
+    signs:[
+      {code:"1.1", name:{ru:"Ж/д переезд со шлагбаумом",kz:"Шлагбаумы бар теміржол өтімі"},img:"1.2.png"},
+      {code:"1.2", name:{ru:"Ж/д переезд без шлагбаума",kz:"Шлагбаумсыз теміржол өтімі"}, img:"1.2.png"},
+      {code:"1.3", name:{ru:"Однопутная железная дорога",kz:"Бір жолды теміржол"},          img:"1.4.png"},
+      {code:"1.5", name:{ru:"Пересечение с трамвайной линией",kz:"Трамвай желісімен қиылысу"},img:"1.5.png"},
+    ],
+    odd:"1.5"
+  },
+  {
+    ru: {
+      q: "Три знака — отменяют ранее введённые запреты, один — вводит новый запрет. Найди лишнее!",
+      exp: "3.20 «Обгон запрещён» вводит новое ограничение. Знаки 3.21, 3.31, 3.32 отменяют ранее введённые запреты."
+    },
+    kz: {
+      q: "Үш белгі алдын ала енгізілген тыйымдарды жояды, біреуі — жаңа тыйым енгізеді. Артығын тап!",
+      exp: "3.20 «Қуып өтуге тыйым» жаңа шектеу енгізеді. 3.21, 3.31, 3.32 — алдын ала енгізілген тыйымдарды жояды."
+    },
+    signs:[
+      {code:"3.21",name:{ru:"Конец запрета обгона",kz:"Қуып өту тыйымының аяқталуы"},       img:"3.32.png"},
+      {code:"3.31",name:{ru:"Конец всех ограничений",kz:"Барлық шектеулердің аяқталуы"},    img:"3.31.png"},
+      {code:"3.32",name:{ru:"Конец зоны ограничения скорости",kz:"Жылдамдық шектеу аймағының аяқталуы"},img:"3.31.png"},
+      {code:"3.20",name:{ru:"Обгон запрещён",kz:"Қуып өтуге тыйым"},                        img:"3.20.png"},
+    ],
+    odd:"3.20"
+  },
+  {
+    ru: {
+      q: "Три знака — предупреждают о состоянии покрытия или посторонних предметах на дороге, один — о рельефе. Найди лишнее!",
+      exp: "1.13 «Крутой спуск» — о рельефе. Знаки 1.15, 1.16, 1.17 предупреждают о состоянии покрытия: скользкость, неровности, выброс гравия."
+    },
+    kz: {
+      q: "Үш белгі жол жабынының күйі туралы ескертеді, біреуі — рельеф туралы. Артығын тап!",
+      exp: "1.13 «Тік түсу» — рельеф туралы. 1.15, 1.16, 1.17 жол жабыны: тайғақтық, теңсіздік, қиыршық шашырауы туралы ескертеді."
+    },
+    signs:[
+      {code:"1.15",name:{ru:"Скользкая дорога",kz:"Тайғақ жол"},                            img:"1.15.png"},
+      {code:"1.16",name:{ru:"Неровная дорога",kz:"Тегіс емес жол"},                         img:"1.16.png"},
+      {code:"1.17",name:{ru:"Выброс гравия",kz:"Қиыршық тас шашырауы"},                    img:"1.17.png"},
+      {code:"1.13",name:{ru:"Крутой спуск",kz:"Тік түсу"},                                  img:"1.13.png"},
+    ],
+    odd:"1.13"
+  },
+  {
+    ru: {
+      q: "Три знака — информационные об автомагистрали и её режиме, один — о жилой зоне. Найди лишнее!",
+      exp: "5.27 «Жилая зона» — о зоне с ограниченным режимом движения. Знаки 5.1, 5.2, 5.3 относятся к автомагистрали."
+    },
+    kz: {
+      q: "Үш белгі автомагистраль туралы ақпараттық, біреуі — тұрғын аймақ туралы. Артығын тап!",
+      exp: "5.27 «Тұрғын аймақ» — шектеулі режимді аймақ туралы. 5.1, 5.2, 5.3 — автомагистральға қатысты."
+    },
+    signs:[
+      {code:"5.1", name:{ru:"Автомагистраль",kz:"Автомагистраль"},                          img:"5.1.png"},
+      {code:"5.2", name:{ru:"Конец автомагистрали",kz:"Автомагистраль аяқталуы"},           img:"5.1.png"},
+      {code:"5.3", name:{ru:"Дорога для автомобилей",kz:"Автомобильдер жолы"},              img:"5.1.png"},
+      {code:"5.27",name:{ru:"Жилая зона",kz:"Тұрғын аймақ"},                               img:"5.27.png"},
+    ],
+    odd:"5.27"
+  },
+  {
+    ru: {
+      q: "Три знака — относятся к предписывающим для скоростного режима, один — предписывает объезд. Найди лишнее!",
+      exp: "4.2 «Движение направо» — предписывает направление объезда. Знаки 4.6, 4.7.1, 4.8 регулируют минимальную скорость."
+    },
+    kz: {
+      q: "Үш белгі жылдамдық режиміне міндеттеуші, біреуі — айналып өту бағытын белгілейді. Артығын тап!",
+      exp: "4.2 «Оңға қозғалыс» — айналып өту бағытын белгілейді. 4.6, 4.7.1, 4.8 ең аз жылдамдықты реттейді."
+    },
+    signs:[
+      {code:"4.6",  name:{ru:"Мин. скорость 40",kz:"Ең аз жылдамдық 40"},                  img:"4.16.png"},
+      {code:"4.7.1",name:{ru:"Конец мин. ограничения скорости",kz:"Ең аз жылдамдық шектеуінің аяқталуы"},img:"4.17.png"},
+      {code:"4.8",  name:{ru:"Мин. скорость 60",kz:"Ең аз жылдамдық 60"},                  img:"4.18.png"},
+      {code:"4.2",  name:{ru:"Движение направо",kz:"Оңға қозғалыс"},                        img:"4.2.png"},
+    ],
+    odd:"4.2"
+  },
+  {
+    ru: {
+      q: "Три знака — предупреждают о метеоусловиях или видимости, один — о геометрии дороги. Найди лишнее!",
+      exp: "1.11.2 «Опасный поворот налево» — о геометрии дороги. Знаки 1.27, 1.28, 1.29 предупреждают о метеоусловиях: ветер, самолёты, тоннель."
+    },
+    kz: {
+      q: "Үш белгі метеожағдайлар немесе көріну туралы ескертеді, біреуі — жолдың геометриясы туралы. Артығын тап!",
+      exp: "1.11.2 «Солға қауіпті бұрылыс» — жол геометриясы туралы. 1.27, 1.28, 1.29 — метеожағдайлар туралы ескертеді."
+    },
+    signs:[
+      {code:"1.27",  name:{ru:"Боковой ветер",kz:"Бүйір жел"},                              img:"1.29.png"},
+      {code:"1.28",  name:{ru:"Низколетящие самолёты",kz:"Аласа ұшатын ұшақтар"},          img:"1.28.png"},
+      {code:"1.29",  name:{ru:"Тоннель",kz:"Туннель"},                                      img:"1.31.png"},
+      {code:"1.11.2",name:{ru:"Опасный поворот налево",kz:"Солға қауіпті бұрылыс"},         img:"1.11.png"},
+    ],
+    odd:"1.11.2"
+  },
+  {
+    ru: {
+      q: "Три знака — запрещают въезд конкретным видам ТС (не всем), один — вводит ограничение скорости. Найди лишнее!",
+      exp: "3.24 «Ограничение скорости 40» — ограничивает скоростной режим, не запрещает въезд. Знаки 3.4, 3.7, 3.10 запрещают въезд конкретным видам ТС."
+    },
+    kz: {
+      q: "Үш белгі нақты КЖҚ түрлерінің кіруіне тыйым салады, біреуі — жылдамдықты шектейді. Артығын тап!",
+      exp: "3.24 «Жылдамдықты шектеу 40» — жылдамдық режимін шектейді, кіруге тыйым емес. 3.4, 3.7, 3.10 нақты КЖҚ түрлерінің кіруіне тыйым."
+    },
+    signs:[
+      {code:"3.4",  name:{ru:"Движение грузовых запрещено",kz:"Жүк авто жүруіне тыйым"},   img:"3.4.png"},
+      {code:"3.7",  name:{ru:"Движение с прицепом запрещено",kz:"Тіркемелі КЖҚ жүруіне тыйым"},img:"3.7.png"},
+      {code:"3.10", name:{ru:"Движение пешеходов запрещено",kz:"Жаяу жүруіне тыйым"},      img:"3.10.png"},
+      {code:"3.24", name:{ru:"Ограничение скорости 40",kz:"Жылдамдықты шектеу 40"},        img:"3.24.png"},
+    ],
+    odd:"3.24"
+  },
+  {
+    ru: {
+      q: "Три знака — информационные об ориентировании на маршруте, один — предупреждающий. Найди лишнее!",
+      exp: "1.30 «Прочие опасности» — предупреждающий знак (треугольник). Знаки 5.11, 5.15.1, 5.19 — информационные о маршруте."
+    },
+    kz: {
+      q: "Үш белгі маршрутта бағдарлау туралы ақпараттық, біреуі — ескертуші. Артығын тап!",
+      exp: "1.30 «Басқа қауіптер» — ескертуші белгі (үшбұрыш). 5.11, 5.15.1, 5.19 — маршрут туралы ақпараттық белгілер."
+    },
+    signs:[
+      {code:"5.11",  name:{ru:"Место разворота",kz:"Айналу орны"},                          img:"5.11.png"},
+      {code:"5.15.1",name:{ru:"Направление движения по полосам",kz:"Жолақтар бойынша қозғалыс бағыты"},img:"5.15.png"},
+      {code:"5.19",  name:{ru:"Тупик",kz:"Тұйық жол"},                                     img:"5.19.png"},
+      {code:"1.30",  name:{ru:"Прочие опасности",kz:"Басқа қауіптер"},                      img:"1.30.png"},
+    ],
+    odd:"1.30"
+  },
+  {
+    ru: {
+      q: "Три знака — запрещают обгон в разных условиях, один — ограничивает минимальную скорость. Найди лишнее!",
+      exp: "4.6 «Минимальная скорость» — предписывающий. Знаки 3.20, 3.21, 3.22 — вводят или отменяют запрет обгона."
+    },
+    kz: {
+      q: "Үш белгі қуып өтуге тыйым немесе оны жоятын, біреуі — ең аз жылдамдықты белгілейді. Артығын тап!",
+      exp: "4.6 «Ең аз жылдамдық» — міндеттеуші белгі. 3.20, 3.21, 3.22 — қуып өтуге тыйым немесе оны жоятын белгілер."
+    },
+    signs:[
+      {code:"3.20",name:{ru:"Обгон запрещён",kz:"Қуып өтуге тыйым"},                        img:"3.20.png"},
+      {code:"3.21",name:{ru:"Конец запрета обгона",kz:"Қуып өту тыйымының аяқталуы"},       img:"3.32.png"},
+      {code:"3.22",name:{ru:"Обгон грузовым запрещён",kz:"Жүк авто қуып өтуіне тыйым"},    img:"3.22.png"},
+      {code:"4.6", name:{ru:"Минимальная скорость 60",kz:"Ең аз жылдамдық 60"},             img:"4.18.png"},
+    ],
+    odd:"4.6"
+  },
+  {
+    ru: {
+      q: "Три знака — предупреждают о пересечении с другой инфраструктурой, один — о состоянии дороги. Найди лишнее!",
+      exp: "1.33 «Опасная обочина» — о состоянии обочины. Знаки 1.5, 1.6, 1.22 предупреждают о пересечении с трамваем, другой дорогой и велодорожкой."
+    },
+    kz: {
+      q: "Үш белгі инфрақұрылыммен қиылысу туралы ескертеді, біреуі — жол жағдайы туралы. Артығын тап!",
+      exp: "1.33 «Қауіпті жиек» — жиек жағдайы туралы. 1.5, 1.6, 1.22 трамвай, екінші жол және велосипед жолымен қиылысу туралы ескертеді."
+    },
+    signs:[
+      {code:"1.5",  name:{ru:"Пересечение с трамвайной линией",kz:"Трамвай желісімен қиылысу"},img:"1.5.png"},
+      {code:"1.6",  name:{ru:"Пересечение равнозначных дорог",kz:"Тең жолдар қиылысы"},    img:"1.6.png"},
+      {code:"1.22", name:{ru:"Пересечение с велодорожкой",kz:"Велосипед жолымен қиылысу"}, img:"1.24.png"},
+      {code:"1.33", name:{ru:"Опасная обочина",kz:"Қауіпті жиек"},                          img:"1.33.png"},
+    ],
+    odd:"1.33"
+  },
+  {
+    ru: {
+      q: "Три знака запрещают скорость, один — запрещает движение для всех ТС. Найди лишнее!",
+      exp: "3.3 «Движение МТС запрещено» запрещает движение всем механическим ТС, а не скоростной режим. Знаки 3.24 (×2 разных значения) и 3.26 — о скорости."
+    },
+    kz: {
+      q: "Үш белгі жылдамдықты шектейді, біреуі — барлық КЖҚ қозғалысына тыйым. Артығын тап!",
+      exp: "3.3 «МКЖ қозғалысы тыйым» барлық механикалық КЖҚ қозғалысына тыйым, жылдамдық емес. 3.24 (2 мəн) және 3.26 — жылдамдық туралы."
+    },
+    signs:[
+      {code:"3.24a",name:{ru:"Ограничение скорости 40",kz:"Жылдамдықты шектеу 40"},        img:"3.24.png"},
+      {code:"3.24b",name:{ru:"Ограничение скорости 60",kz:"Жылдамдықты шектеу 60"},        img:"3.24.png"},
+      {code:"3.26", name:{ru:"Подача звукового сигнала запрещена",kz:"Дыбыс сигналы тыйым"},img:"3.27.png"},
+      {code:"3.3",  name:{ru:"Движение МТС запрещено",kz:"МКЖ қозғалысы тыйым"},           img:"3.3.png"},
+    ],
+    odd:"3.3"
+  },
+  {
+    ru: {
+      q: "Три знака — предписывающие для велосипедистов и пешеходов на совместной инфраструктуре, один — только для велосипедистов. Найди лишнее!",
+      exp: "4.6 «Велосипедная дорожка» — только для велосипедов. Знаки 4.5, 4.7, 4.8 — для совместного использования пешеходами и велосипедистами."
+    },
+    kz: {
+      q: "Үш белгі бірлескен инфрақұрылымдағы велосипедшілер мен жаяу жүргіншілерге міндеттеуші, біреуі — тек велосипедшілерге. Артығын тап!",
+      exp: "4.6 «Велосипед жолы» — тек велосипедшілер үшін. 4.5, 4.7, 4.8 — жаяу жəне велосипедшілер бірге пайдаланады."
+    },
+    signs:[
+      {code:"4.5", name:{ru:"Пешеходная дорожка",kz:"Жаяу жол"},                            img:"4.5.png"},
+      {code:"4.6", name:{ru:"Велосипедная дорожка",kz:"Велосипед жолы"},                    img:"4.6.png"},
+      {code:"4.7", name:{ru:"Пешеходная и велосипедная дорожка",kz:"Жаяу жəне велосипед жолы"},img:"4.8.png"},
+      {code:"4.8", name:{ru:"Конец пешеходной и велодорожки",kz:"Жаяу жəне велосипед жолының аяқталуы"},img:"4.8.png"},
+    ],
+    odd:"4.6"
+  },
+  {
+    ru: {
+      q: "Три знака — знаки приоритета, обязывающие уступить дорогу или запрещающие проезд без остановки, один — знак главной дороги. Найди лишнее!",
+      exp: "2.1 «Главная дорога» даёт преимущество. Знаки 2.4, 2.5, 2.6 обязывают водителя уступать дорогу или останавливаться."
+    },
+    kz: {
+      q: "Үш белгі жол беруге немесе тоқтаусыз жүруге тыйым салатын басымдылық белгілері, біреуі — басты жол белгісі. Артығын тап!",
+      exp: "2.1 «Басты жол» басымдылық береді. 2.4, 2.5, 2.6 жүргізушіні жол беруге немесе тоқтауға міндеттейді."
+    },
+    signs:[
+      {code:"2.1", name:{ru:"Главная дорога",kz:"Басты жол"},                               img:"2.1.png"},
+      {code:"2.4", name:{ru:"Уступите дорогу",kz:"Жол беріңіз"},                            img:"2.4.png"},
+      {code:"2.5", name:{ru:"Движение без остановки запрещено",kz:"Тоқтаусыз жүруге тыйым"},img:"2.4.png"},
+      {code:"2.6", name:{ru:"Преимущество встречного движения",kz:"Қарсы қозғалысқа басымдылық"},img:"2.1.png"},
+    ],
+    odd:"2.1"
+  },
+  {
+    ru: {
+      q: "Три знака — информационные об организации движения на конкретном участке дороги, один — о зоне населённого пункта. Найди лишнее!",
+      exp: "5.25 «Начало населённого пункта» — о въезде в населённый пункт. Знаки 5.14, 5.15.1, 5.16.3 — об организации движения по полосам."
+    },
+    kz: {
+      q: "Үш белгі жолдың нақты учаскесіндегі қозғалысты ұйымдастыру туралы ақпараттық, біреуі — елді мекен аймағы туралы. Артығын тап!",
+      exp: "5.25 «Елді мекеннің басталуы» — елді мекенге кіру туралы. 5.14, 5.15.1, 5.16.3 — жолақтар бойынша қозғалысты ұйымдастыру туралы."
+    },
+    signs:[
+      {code:"5.14",   name:{ru:"Полоса для маршрутных ТС",kz:"Маршруттық КЖҚ жолағы"},     img:"5.14.png"},
+      {code:"5.15.1", name:{ru:"Направление движения по полосам",kz:"Жолақтар бойынша бағыт"},img:"5.15.png"},
+      {code:"5.16.3", name:{ru:"Диагональный пешеходный переход",kz:"Диагональды жаяу өтім"},img:"5.14.png"},
+      {code:"5.25",   name:{ru:"Начало населённого пункта",kz:"Елді мекеннің басталуы"},     img:"5.25.png"},
+    ],
+    odd:"5.25"
+  },
+  {
+    ru: {
+      q: "Три знака предупреждают о препятствиях или выездах на опасные участки, один — о двустороннем движении. Найди лишнее!",
+      exp: "1.19 «Двустороннее движение» — о встречном потоке. Знаки 1.9, 1.10, 1.26 предупреждают о выездах на набережную, разводном мосте и камнепаде."
+    },
+    kz: {
+      q: "Үш белгі кедергілер немесе қауіпті жерге шығу туралы ескертеді, біреуі — екіжақты қозғалыс туралы. Артығын тап!",
+      exp: "1.19 «Екіжақты қозғалыс» — қарсы ағын туралы. 1.9, 1.10, 1.26 — жайпақ жерге шығу, ашылатын көпір жəне тас құлауы туралы."
+    },
+    signs:[
+      {code:"1.9",  name:{ru:"Разводной мост",kz:"Ашылатын көпір"},                         img:"1.9.png"},
+      {code:"1.10", name:{ru:"Выезд на набережную",kz:"Жайпаққа шығу"},                     img:"1.10.png"},
+      {code:"1.19", name:{ru:"Двустороннее движение",kz:"Екіжақты қозғалыс"},               img:"1.19.png"},
+      {code:"1.26", name:{ru:"Падение камней",kz:"Тас құлауы"},                             img:"1.26.png"},
+    ],
+    odd:"1.19"
+  },
+];
+
+// ══════════════════════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════════════════════
+const ROUND_TIME = 30;
+let curRound = 0, score = 0, correct = 0, answered = false;
+let timerInt = null, timeLeft = ROUND_TIME;
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  const inQ = id === 'screen-quiz';
+  document.getElementById('hdr-score').style.display = inQ ? 'block' : 'none';
+  document.getElementById('btn-stop').style.display  = inQ ? 'block' : 'none';
+  if (id === 'screen-home') renderHomeRecs();
+  if (id === 'screen-lb')   renderLB();
+}
+
+function startGame() {
+  curRound = 0; score = 0; correct = 0;
+  document.getElementById('hdr-pts').textContent = '0';
+  showScreen('screen-quiz');
+  renderRound();
+}
+
+function stopEarly() {
+  const played = curRound + (answered ? 1 : 0);
+  if (!confirm(t('confirmStop', played, ROUNDS.length))) return;
+  clearInterval(timerInt);
+  showResults(true, played);
+}
+
+function renderRound() {
+  answered = false;
+  const r = ROUNDS[curRound];
+  document.getElementById('q-num').textContent = curRound + 1;
+  document.getElementById('q-tot').textContent = ROUNDS.length;
+  document.getElementById('q-text').textContent = r[lang].q;
+  document.getElementById('q-score').textContent = score;
+  document.getElementById('hdr-pts').textContent = score;
+  document.getElementById('q-prog').style.width = (curRound / ROUNDS.length * 100) + '%';
+  document.getElementById('feedback').className = 'feedback';
+  const btn = document.getElementById('btn-next');
+  btn.className = 'btn-next';
+  btn.textContent = curRound < ROUNDS.length - 1 ? t('btnNextRound') : t('btnResults');
+
+  const grid = document.getElementById('signs-grid');
+  grid.innerHTML = '';
+  r.signs.forEach(sign => {
+    const card = document.createElement('div');
+    card.className = 'sign-card';
+    card.dataset.code = sign.code;
+    const name = typeof sign.name === 'object' ? sign.name[lang] : sign.name;
+    card.innerHTML = `
+      <img class="sign-img" src="signs/${sign.img}" alt="${name}"
+        onerror="handleSignImageError(this, '${sign.img}')">
+      <div class="sign-err">—</div>
+      <div class="sign-code">${sign.code}</div>
+      <div class="sign-name">${name}</div>`;
+    card.onclick = () => pick(sign.code);
+    grid.appendChild(card);
+  });
+  startTimer();
+}
+
+function handleSignImageError(img, originalFile) {
+  if (!img.dataset.fallbackTried) {
+    img.dataset.fallbackTried = '1';
+    img.src = `signs/${originalFile.replace(/\.png$/i, '.svg')}`;
+    return;
+  }
+  img.style.display = 'none';
+  img.nextElementSibling.style.display = 'flex';
+}
+
+function startTimer() {
+  clearInterval(timerInt);
+  timeLeft = ROUND_TIME;
+  const circ = document.getElementById('t-circle');
+  const num  = document.getElementById('t-num');
+  const C = 207;
+  const tick = () => {
+    num.textContent = timeLeft;
+    circ.style.strokeDashoffset = C * (1 - timeLeft / ROUND_TIME);
+    const danger = timeLeft <= 5;
+    circ.style.stroke = danger ? '#e53935' : '#00AEEF';
+    num.style.color   = danger ? '#e53935' : '';
+  };
+  tick();
+  timerInt = setInterval(() => {
+    timeLeft--;
+    tick();
+    if (timeLeft <= 0) { clearInterval(timerInt); if (!answered) doTimeout(); }
+  }, 1000);
+}
+
+function pick(code) {
+  if (answered) return;
+  clearInterval(timerInt);
+  answered = true;
+  const r = ROUNDS[curRound];
+  const cards = document.querySelectorAll('.sign-card');
+  cards.forEach(c => c.classList.add('disabled'));
+  const fb = document.getElementById('feedback');
+  if (code === r.odd) {
+    correct++;
+    score += 100 + Math.max(0, timeLeft * 10);
+    cards.forEach(c => c.classList.add(c.dataset.code === r.odd ? 'sel-ok' : 'rev-dim'));
+    fb.className = 'feedback ok show';
+    fb.textContent = t('fbOk', r[lang].exp);
+  } else {
+    cards.forEach(c => {
+      if (c.dataset.code === code)  c.classList.add('sel-err');
+      else if (c.dataset.code === r.odd) c.classList.add('rev-ok');
+      else c.classList.add('rev-dim');
+    });
+    fb.className = 'feedback err show';
+    fb.textContent = t('fbErr', r[lang].exp);
+  }
+  document.getElementById('q-score').textContent = score;
+  document.getElementById('hdr-pts').textContent = score;
+  const btn = document.getElementById('btn-next');
+  btn.className = 'btn-next show';
+  btn.textContent = curRound < ROUNDS.length - 1 ? t('btnNextRound') : t('btnResults');
+}
+
+function doTimeout() {
+  if (answered) return;
+  answered = true;
+  const r = ROUNDS[curRound];
+  const cards = document.querySelectorAll('.sign-card');
+  cards.forEach(c => {
+    c.classList.add('disabled');
+    c.classList.add(c.dataset.code === r.odd ? 'rev-ok' : 'rev-dim');
+  });
+  const fb = document.getElementById('feedback');
+  fb.className = 'feedback tim show';
+  fb.textContent = t('fbTim', r[lang].exp);
+  const btn = document.getElementById('btn-next');
+  btn.className = 'btn-next show';
+  btn.textContent = curRound < ROUNDS.length - 1 ? t('btnNextRound') : t('btnResults');
+}
+
+function nextRound() {
+  curRound++;
+  if (curRound >= ROUNDS.length) showResults(false, ROUNDS.length);
+  else renderRound();
+}
+
+function showResults(early, played) {
+  clearInterval(timerInt);
+  if (played === undefined) played = curRound + (answered ? 1 : 0);
+  const pct = played > 0 ? Math.round(correct / played * 100) : 0;
+  let verdict, hint;
+  if (early) {
+    verdict = t('verdictEarly');
+    hint = t('hintEarly', played, ROUNDS.length);
+  } else if (pct === 100) {
+    verdict = t('verdict100'); hint = t('hint100');
+  } else if (pct >= 70) {
+    verdict = t('verdict70'); hint = t('hint70');
+  } else {
+    verdict = t('verdictLow'); hint = t('hintLow');
+  }
+  document.getElementById('res-verdict').textContent = verdict;
+  document.getElementById('res-hint').textContent = hint;
+  document.getElementById('res-pts').textContent = score;
+  document.getElementById('res-correct').textContent = correct;
+  document.getElementById('res-wrong').textContent = played - correct;
+  document.getElementById('res-pct').textContent = pct + '%';
+  document.getElementById('save-name').value = localStorage.getItem('pdd_last_name') || '';
+  document.getElementById('save-ok').className = 'save-ok';
+  document.getElementById('save-ok').textContent = t('saveOk');
+  let p = parseInt(localStorage.getItem('pdd_played') || '0') + 1;
+  localStorage.setItem('pdd_played', p);
+  document.getElementById('home-played').textContent = p;
+  window._lastPlayed = played;
+  showScreen('screen-results');
+}
+
+function getRecs() { try { return JSON.parse(localStorage.getItem('pdd_recs') || '[]'); } catch { return []; } }
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function saveRecord() {
+  const name = document.getElementById('save-name').value.trim();
+  if (!name) return;
+  localStorage.setItem('pdd_last_name', name);
+  const played = window._lastPlayed || 0;
+  const pct = played > 0 ? Math.round(correct / played * 100) : 0;
+  const recs = getRecs();
+  recs.push({ name, score, correct, played, pct, date: new Date().toLocaleDateString('ru-RU', {day:'2-digit', month:'short'}) });
+  recs.sort((a,b)=>b.score-a.score);
+  localStorage.setItem('pdd_recs', JSON.stringify(recs.slice(0,20)));
+  document.getElementById('save-ok').className = 'save-ok show';
+}
+
+function clearRecs() {
+  if (!confirm(t('confirmClear'))) return;
+  localStorage.removeItem('pdd_recs');
+  renderLB();
+}
+
+function renderLB() {
+  const recs = getRecs();
+  const cols = t('lbCols');
+  const el = document.getElementById('lb-body');
+  if (!recs.length) { el.innerHTML = `<div class="empty-lb">${t('lbEmpty')}</div>`; return; }
+  const rc = ['r1','r2','r3'];
+  el.innerHTML = `<table class="lb">
+    <thead><tr>${cols.map(c=>`<th>${c}</th>`).join('')}</tr></thead>
+    <tbody>
+    ${recs.slice(0,15).map((r,i)=>`<tr>
+      <td><span class="rk ${rc[i]||''}">${i+1}</span></td>
+      <td>${esc(r.name)}</td>
+      <td><strong>${r.score}</strong></td>
+      <td>${r.correct} / ${r.played}</td>
+      <td><div class="pct-row"><div class="pct-bar" style="width:${Math.round((r.pct||0)*0.8)}px"></div><span class="pct-num">${r.pct}%</span></div></td>
+      <td>${r.date}</td>
+    </tr>`).join('')}
+    </tbody>
+  </table>`;
+}
+
+function renderHomeRecs() {
+  const recs = getRecs();
+  document.getElementById('home-played').textContent = localStorage.getItem('pdd_played') || '0';
+  const el = document.getElementById('home-recs');
+  if (!recs.length) { el.innerHTML = `<div class="no-recs">${t('noRecs')}</div>`; return; }
+  el.innerHTML = recs.slice(0,3).map((r,i)=>`
+    <div class="rec-mini">
+      <span class="rec-mini-rank ${i===0?'g':''}">${i+1}</span>
+      <span class="rec-mini-name">${esc(r.name)}</span>
+      <span class="rec-mini-score">${r.score}</span>
+      <span class="rec-mini-date">${r.date}</span>
+    </div>`).join('');
+}
+
+// INIT
+applyLang();
+</script>
+</body>
+</html>
